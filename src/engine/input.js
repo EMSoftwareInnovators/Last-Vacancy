@@ -208,7 +208,10 @@ export class Input {
       if (!this.down.has(k)) this.pressed.add(k);
       this.down.add(k);
       this.scheme = 'kbm';
-      if (this.onGesture) this.onGesture();
+      /* Called from inside the real event: the only place every browser will
+         honor a pointer-lock request (Firefox and Safari refuse one made a
+         frame later). The key goes along, because Escape never counts. */
+      if (this.onGesture) this.onGesture(k);
     });
     addEventListener('keyup', (e) => {
       const k = norm(e);
@@ -234,7 +237,7 @@ export class Input {
       this.scheme = 'kbm';
       /* Fired from inside the real event, which is the only place the
          browser will honor a pointer-lock request. */
-      if (this.onGesture) this.onGesture();
+      if (this.onGesture) this.onGesture('Mouse' + e.button);
       e.preventDefault();
     });
     addEventListener('mouseup', (e) => { if (e.button < 3) this.mouse[e.button] = false; });

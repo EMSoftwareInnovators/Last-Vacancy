@@ -206,7 +206,7 @@ export class Shift {
         const wrap = document.querySelector('#paper .sheetwrap');
         if (wrap && input.hit('ArrowDown', 'KeyS')) wrap.scrollTop += wrap.clientHeight * 0.35;
         if (wrap && input.hit('ArrowUp', 'KeyW')) wrap.scrollTop -= wrap.clientHeight * 0.35;
-        if (input.hit('Escape', 'UiBack', 'KeyE', 'Enter', 'Space', 'Backspace') || g.input.mousePressed[0]) this.closeOverlay();
+        if (input.hit('Escape', 'UiBack', 'KeyE', 'Enter', 'Space', 'Backspace') || (g.input.mousePressed[0] && g.input.locked)) this.closeOverlay();
         break;
       }
       case 'picker': if (!this.picker.handle(input)) this.closeOverlay(); else g.ui.showPaper(this.picker.render()); break;
@@ -379,7 +379,7 @@ export class Shift {
     if (i.hit('ArrowUp', 'KeyW')) { R.move(-1); g.sound.uiMove(); }
     if (i.hit('ArrowDown', 'KeyS')) { R.move(1); g.sound.uiMove(); }
     const dig = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].findIndex((k) => i.hit(k));
-    let go = i.hit('KeyE', 'Enter', 'Space') || i.mousePressed[0];
+    let go = i.hit('KeyE', 'Enter', 'Space') || (i.mousePressed[0] && i.locked);
     if (dig >= 0 && dig < n) { R.sel = dig; go = true; }
     if (go) {
       // ENTER on a line still typing finishes it; a number key means you already know
@@ -622,7 +622,7 @@ export class Shift {
     if (i.hit('ArrowUp', 'KeyW')) { R.sel = (R.sel + n - 1) % Math.max(1, n); g.sound.uiMove(); }
     if (i.hit('ArrowDown', 'KeyS')) { R.sel = (R.sel + 1) % Math.max(1, n); g.sound.uiMove(); }
     const dig = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].findIndex((k) => i.hit(k));
-    let go = i.hit('KeyE', 'Enter', 'Space') || i.mousePressed[0];
+    let go = i.hit('KeyE', 'Enter', 'Space') || (i.mousePressed[0] && i.locked);
     if (dig >= 0 && dig < n) { R.sel = dig; go = true; }
     if (go) {
       if (g.ui.typing && dig < 0) { g.ui.finishTyping(); return; }
@@ -1395,7 +1395,7 @@ export class Shift {
     if (this.mode === 'board') { const b = this.board.render(); this.g.ui.showBoard(b.grid, b.info); }
   }
   onPause() { this.standUp(); }
-  onResume() { this.g.wantLock = !this.mode; if (!this.mode) this.g.grabLock(); }
+  onResume() { this.g.wantLock = true; this.g.grabLock(); }
 }
 
 export { BARKS, choicesHtml, NEWS_DROP, BTV, round2, until, inRoom };

@@ -264,6 +264,7 @@ export class Interact {
 
   idlePrompt() {
     const s = this.s;
+    if (!s.g.input.locked && s.g.wantLock && s.g.input.scheme === 'kbm') return '<span class="quiet">Press any key or click to look around</span>';
     const top = s.g.player.held.length ? s.g.player.held[s.g.player.held.length - 1] : null;
     return top ? `<span class="quiet">${s.g.ui.keyHint('drop')} put down ${escape(itemLabel(top).toLowerCase())}</span>` : '';
   }

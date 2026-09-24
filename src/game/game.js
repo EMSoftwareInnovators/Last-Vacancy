@@ -66,16 +66,28 @@ export class Game {
     this.doors = new Doors();
     this.actorMeshes = buildActorMeshes();
 
+    /* The mouse and the browser. Escape always releases pointer lock, and an
+       Escape keypress does not count as a gesture, so nothing can take the
+       lock back until the next real key or click. So: take it back on the
+       very next one, from inside that event; never mistake an Escape that
+       closed a piece of paper for a pause; and say so on screen while the
+       mouse is loose. */
     this.input.onLockChange = (locked) => {
       const ours = this.time - (this._lockAskedT || -99) < 0.6;
       if (locked) { this.wantLock = true; return; }
       if (ours) return;
+      // the Escape that just closed the terminal (or a note, or the rack) took the lock with it
+      if (this.time - (this._escT || -99) < 0.8 && this._escFocus) return;
       if (this.state === ST.PLAY && !this.focus()) this.pause();
     };
-    this.input.onGesture = () => {
-      if (!this.wantLock || this.input.locked) return;
-      if (this.state !== ST.PLAY || this.focus()) return;
-      this.grabLock();
+    this.input.onGesture = (code) => {
+      if (code === 'Escape') { this._escT = this.time; this._escFocus = this.focus(); return; }
+      if (this.input.locked) return;
+      const playing = this.state === ST.PLAY && this.wantLock;
+      // Enter / E / Space on "Back to the desk" is the resume: lock on that very keypress
+      const resuming = this.state === ST.PAUSE && (this.pauseSel || 0) === 0
+        && (code === 'Enter' || code === 'NumpadEnter' || code === 'KeyE' || code === 'Space');
+      if (playing || resuming) this.grabLock();
     };
     addEventListener('resize', () => this.layout());
     this.applyOptions();
