@@ -32,6 +32,7 @@ export function binderHtml(s) {
       <li>Cards: check the date and the name. Imprint, then they sign. Merchant copy in the box.</li>
       <li>Traveler's checks get signed in front of you.</li>
       <li>Cash goes in the register and gets rung up. Paid-outs get a slip.</li>
+      <li>Cash guests leave a $10 key deposit. It goes back to them, out of the drawer, with a slip, when the key does.</li>
       <li>No pets. No local checks. Pool closes at 10 &mdash; lock the gate.</li>
       <li>Wake-ups: write it on the sheet, and then CALL.</li>
       <li>Audit at 3. Coffee by 5:45. Breakfast out at 6.</li>

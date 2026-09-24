@@ -755,7 +755,7 @@ export class Shift {
   tearPrinter() {
     const t = this.printerTray.shift();
     if (!t) return;
-    this.giveItem(makeItem(t.kind === 'receipt' ? 'receipt' : 'receipt', { room: t.room, label: t.label }));
+    this.giveItem(t.kind === 'report' ? makeItem('packet') : makeItem('receipt', { room: t.room, label: t.label }));
     this.g.sound.paper();
   }
   emptyKeyDrop() {
@@ -1287,7 +1287,7 @@ export class Shift {
      ============================================================ */
   auditDone(A) {
     this.log('Ran the night audit.', 'good');
-    this.printerTray.push({ kind: 'report', label: 'the audit packet for June' });
+    this.printerTray.push({ kind: 'report', label: 'the audit packet for June (goes on her desk)' });
   }
 
   report() {
@@ -1348,14 +1348,17 @@ export class Shift {
     g.dropLock();
     this.dispose();
     g.ui.setHudVisible(false);
-    g.ui.showPanel(`${reportHtml(r)}<div style="margin-top:1.2cqw">${noteHtml(note, { date: 'Tonight, on the desk:' })}</div>
+    g.ui.showPanel(`<div class="endwrap"><div>${reportHtml(r)}</div><div>${noteHtml(note, { date: 'Left on the desk for tonight:' })}</div></div>
       <p class="pad-foot">${g.ui.keyHint('confirm')} clock out &nbsp;&middot;&nbsp; The motel has been saved. CONTINUE on the title starts tomorrow night.</p>`);
+    g.ui.el.panelBody.classList.add('endscreen');
     g.fadeTo = 0.25;
   }
 
   updateEnd() {
-    const g = this.g;
-    if (g.confirmHit() || g.backHit()) { g.ui.hidePanel(); g.toTitle(); }
+    const g = this.g, el = g.ui.el.panelBody;
+    if (g.input.hit('ArrowDown', 'KeyS')) el.scrollTop += 80;
+    if (g.input.hit('ArrowUp', 'KeyW')) el.scrollTop -= 80;
+    if (g.confirmHit() || g.backHit()) { el.classList.remove('endscreen'); g.ui.hidePanel(); g.toTitle(); }
   }
 
   /* ============================================================

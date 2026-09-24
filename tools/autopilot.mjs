@@ -103,7 +103,7 @@ const result = await T.ev(async (opts) => {
     // payment
     for (let loop = 0; loop < 8 && p.ci.stage !== 'key' && p.ci.stage !== 'done'; loop++) {
       const stage = p.ci.stage;
-      if (stage === 'pay') { s.talkTo(p); converse(null, (ch) => { const i = label(ch, /expired/); if (i >= 0 && p.stay.card && /09\/97/.test(p.stay.card.exp)) return i; const j = label(ch, /That'll be|honor|nineteen|Sign them|take the payment|Run it|Take the/); return j >= 0 ? j : 0; }); continue; }
+      if (stage === 'pay') { s.talkTo(p); converse(null, (ch) => { const i = label(ch, /expired/); if (i >= 0 && p.stay.card && /09\/97/.test(p.stay.card.exp)) return i; const d = label(ch, /key deposit/); if (d >= 0 && Math.random() < 0.5) return d; const j = label(ch, /That'll be|honor|nineteen|Sign them|take the payment|Run it|Take the/); return j >= 0 ? j : 0; }); continue; }
       if (stage === 'cash') { if (s.pendingSale && !s.pendingSale.rung) s.useRegister(); s.talkTo(p); converse(); continue; }
       if (stage === 'card') { if (!s.heldOf('slip')) s.imprint(); s.talkTo(p); converse(null, (ch) => { const i = label(ch, /Sign here/); return i >= 0 ? i : 0; }); continue; }
       if (stage === 'voucher') { s.talkTo(p); converse(); continue; }
@@ -200,6 +200,7 @@ const result = await T.ev(async (opts) => {
     for (let i = 0; i < 12 && !t.audit.done; i++) t.handle(fake(['Enter']));
     say(`audit: ${t.audit.results.map((r) => (r.ok ? 'ok' : 'LOOK')).join(' ')} | ${t.audit.results.flatMap((r) => r.lines).filter(Boolean).slice(0, 12).join(' / ')}`);
     t.screen = 'main';
+    if (s.printerTray.length) { s.tearPrinter(); const pk = s.heldOf('packet'); if (pk) { s.removeHeld(pk); s.flags.packetLeft = true; } }
   }
 
   function breakfastPrep() {
@@ -290,10 +291,24 @@ const result = await T.ev(async (opts) => {
   };
 }, args);
 
+// pictures, after the run stops: --shots="name:x,z,yaw,pitch[,lv];..."
+if (args.shots) {
+  const { mkdirSync } = await import('node:fs');
+  mkdirSync('shots', { recursive: true });
+  for (const spec of String(args.shots).split(';').filter(Boolean)) {
+    const [name, rest] = spec.split(':');
+    const [x, z, yaw, pitch, lv] = rest.split(',').map(Number);
+    await T.ev(({ x, z, yaw, pitch, lv }) => { const g = window.__game; const p = g.player; p.x = x; p.z = z; p.yaw = yaw; p.pitch = pitch; p.lv = lv || 0; p.vx = p.vz = 0; g.shift.mode = null; window.__game.ui.hideDialogue(); }, { x, z, yaw, pitch, lv });
+    await T.wait(900);
+    await T.page.screenshot({ path: `shots/ap-${name}.png` });
+    console.log('shot', name);
+  }
+}
 for (const l of result.log) console.log(l);
 console.log('---');
 console.log(JSON.stringify({ ...result, log: undefined, note: undefined }, null, 1));
 if (result.note) console.log('--- END SCREEN ---\n' + result.note);
+if (args.endshot && result.over) { await T.wait(600); await T.page.screenshot({ path: 'shots/ap-end.png' }); console.log('shot end'); }
 T.check('no exceptions during the shift', result.errs.length === 0);
 T.check('shift reached handoff', result.over || !!args.until);
 process.exit(await T.done() ? 1 : 0);

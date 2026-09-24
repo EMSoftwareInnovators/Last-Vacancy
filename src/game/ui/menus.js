@@ -113,21 +113,22 @@ export function howToHtml() {
   <h2>WORKING THE NIGHT DESK${onPad ? ` <span class="quiet">&mdash; ${currentScheme() === 'playstation' ? 'PLAYSTATION' : 'XBOX'} PAD</span>` : ''}</h2>
   <div class="keys">
     <ul>${key('move', 'walk')}${key('run', 'hurry')}${key('look', 'look')}${key('pause', 'pause')}</ul>
-    <ul>${key('interact', 'use / talk / take')}${onPad ? key('up', 'pick a reply') : `<li class="plain"><span class="key">1-4</span> pick a reply</li>`}${key('notes', 'your notepad')}</ul>
+    <ul>${key('interact', 'use / talk / take')}${onPad ? key('up', 'pick a reply') : `<li class="plain"><span class="key">1-6</span> pick a reply</li>`}${key('notes', 'your notepad')}</ul>
     <ul>${key('drop', 'put it down')}${key('wait', 'sit, let time pass')}</ul>
   </div>
   <div class="cols">
     <ul>
-      <li><b>The desk.</b> Guests ring the bell. Ask what they need, pick them a room on the terminal (${'F1'}), take their money, and hand them the key off the rack.</li>
-      <li><b>Rooms are not all alike.</b> The terminal's room list says which is quiet, which is by the ice machine, which AC rattles. Guests remember where you put them.</li>
-      <li><b>Money.</b> Cash goes to the register and change comes back out of it. Cards go through the imprinter. Vouchers and coupons have rules on them.</li>
-      <li><b>The phone.</b> Two lines. Put people on hold, transfer them to rooms, and do not give out room numbers.</li>
+      <li><b>Check-ins.</b> Talk to the guest: name, how many, how long, smoking, beds, how they are paying. Then the terminal: ${'F1'} CHECK-IN (or 1), ENTER to post. Take the money, pull the key off the rack behind you, and hand it across.</li>
+      <li><b>The rack</b> has a tab over every hook: CLEAN, DIRTY, OCC, RSVD. Taking a key for a room you just sold flips it to OCC; everything else you flip yourself (${glyphText('drop')} on the rack). Luz cleans by the rack.</li>
+      <li><b>Money.</b> Cash goes to the register, and the change comes back out of it into your hand. Cards: check the date, imprint (hold ${glyphText('interact')}), they sign. Vouchers: the binder lists who we bill. Coupons have rules printed on them.</li>
+      <li><b>The phone.</b> Two lines. ${'HOLD'} appears when another line rings or somebody is at the desk. Never give out a room number: put the call through, or take a message.</li>
     </ul>
     <ul>
-      <li><b>Requests.</b> Towels, pillows, a remote, a clogged toilet. Promises go in your notepad (${glyphText('notes')}); supplies are in the back office.</li>
-      <li><b>Wake-up calls</b> go on the sheet by the phone. Call the room when it is time.</li>
-      <li><b>Night audit</b> around three: the terminal (${'F5'}) against the drawer, the card slips and the key rack.</li>
-      <li><b>Breakfast</b> is yours from half past four: coffee, juice, trays, the waffle iron, the papers. Housekeeping and the morning clerk come in at seven.</li>
+      <li><b>Requests</b> go on your notepad (${glyphText('notes')}). Linen and supplies are in the back office; plungers and breakers in maintenance, north end.</li>
+      <li><b>Wake-up calls</b> go on the sheet by the phone. When one is due, pick up the phone and call the room.</li>
+      <li><b>Night audit</b> at three: ${'F5'}. It checks the drawer, the card slips, the vouchers and the rack against the system.</li>
+      <li><b>Breakfast</b> is yours from half past four: coffee packs, trays and waffle mix in the pantry; juice and milk in its fridge. The papers land out front around five.</li>
+      <li><b>Full?</b> The NO VACANCY switch is by the rack. <b>Quiet?</b> Sit on the stool (${glyphText('wait')}) and the night goes faster until something needs you.</li>
     </ul>
   </div>
   <p class="pad-foot">${glyph('back')} back</p></div>`;

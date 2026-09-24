@@ -16,6 +16,7 @@ export const ITEMS = {
   voucher: { label: (it) => `VOUCHER — ${it.company}`, mesh: 'voucher' },
   coupon: { label: () => 'TRAVEL-BOOK COUPON', mesh: 'voucher' },
   receipt: { label: (it) => `RECEIPT, RM ${it.room}`, mesh: 'receipt' },
+  packet: { label: () => 'AUDIT PACKET (FOR JUNE)', mesh: 'receipt' },
   checks: { label: (it) => `TRAVELER'S CHECKS $${it.amount}`, mesh: 'voucher' },
   towels: { label: () => 'TOWELS', mesh: 'towels', supply: 'towels' },
   pillow: { label: () => 'PILLOW', mesh: 'pillow', supply: 'pillow' },
@@ -47,7 +48,7 @@ export const ITEMS = {
 
 let seq = 1;
 /* Small things ride in a shirt pocket and do not take a hand. */
-export const POCKET = new Set(['key', 'master', 'card', 'slip', 'voucher', 'coupon', 'receipt', 'checks', 'coinBag']);
+export const POCKET = new Set(['key', 'master', 'card', 'slip', 'voucher', 'coupon', 'receipt', 'checks', 'coinBag', 'packet']);
 
 export function makeItem(kind, extra = {}) {
   const def = ITEMS[kind];

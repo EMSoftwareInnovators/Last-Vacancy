@@ -78,7 +78,15 @@ export class Interact {
     /* ---------------- the back office ---------------- */
     add({ id: 'linen', aabb: { ...box(LINEN), y1: LINEN.top, z1: LINEN.z1 + 0.05 }, prompt: () => 'Linen shelves', use: () => s.openPicker(this.linenPicker()) });
     add({ id: 'supply', aabb: { ...box(SUPPLY), y1: SUPPLY.top, z1: SUPPLY.z1 + 0.05 }, prompt: () => 'Supply cabinet', use: () => s.openPicker(this.supplyPicker()) });
-    add({ id: 'mgrdesk', aabb: { x0: MGR_DESK.x0, x1: MGR_DESK.x1, y0: 0, y1: MGR_DESK.y + 0.1, z0: MGR_DESK.z0, z1: MGR_DESK.z1 }, prompt: () => 'June\'s desk: read her note', use: () => s.openPaper(noteHtml(s.juneLines, { date: 'on the back of a Sysco invoice', foot: '[ESC] put it down' })) });
+    add({
+      id: 'mgrdesk', aabb: { x0: MGR_DESK.x0, x1: MGR_DESK.x1, y0: 0, y1: MGR_DESK.y + 0.1, z0: MGR_DESK.z0, z1: MGR_DESK.z1 },
+      prompt: () => (s.heldOf('packet') ? 'Leave the audit packet on June\'s desk' : 'June\'s desk: read her note'),
+      use: () => {
+        const pk = s.heldOf('packet');
+        if (pk) { s.removeHeld(pk); s.flags.packetLeft = true; s.g.sound.paper(); s.toast('On her desk, square to the corner, the way she likes it.', 'good'); return; }
+        s.openPaper(noteHtml(s.juneLines, { date: 'on the back of a Sysco invoice', foot: '[ESC] put it down' }));
+      },
+    });
     add({ id: 'breakerOffice', aabb: { x0: 2.0, x1: 2.4, y0: 0.55, y1: 1.45, z0: -7.2, z1: -7.0 }, prompt: () => 'Breaker panel (office)', use: () => s.toast('Office breakers. All on. Leave them that way.') });
 
     /* ---------------- the pantry ---------------- */

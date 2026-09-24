@@ -177,6 +177,7 @@ function payNode(s, p, ci) {
   ci.amount = amt;
   const nights = f.nights;
   const lead = `That'll be ${money(amt)} -- ${nights === 1 ? 'one night' : `${nights} nights`}, tax included.`;
+  const cashNoDeposit = (st.pay === 'CASH' || st.pay === 'TC') && !ci.deposit && !p.groupRooms && !f.charges.some((c) => c.desc === 'KEY DEPOSIT');
   const choices = [reply(lead, () => {
     // they check it against what they came in for
     const wrong = [];
@@ -199,6 +200,12 @@ function payNode(s, p, ci) {
     return tender(s, p, ci);
   })];
   if (st.pay === 'CARD') choices.push(reply('Could I see your card and an ID?', () => tender(s, p, ci)));
+  if (cashNoDeposit) choices.push(reply(`${money(amt)}, plus a ten-dollar key deposit -- you get it back at checkout.`, () => {
+    ci.deposit = true;
+    s.ledger.charge(f, 'KEY DEPOSIT', 10, s.clock.min);
+    f.deposit = 10;
+    return say(p, p.rosterId === 'OTIS' ? 'Ten dollars for a key. For a KEY. ...Fine. It comes back, you said. It comes back.' : s.rng.pick(['Sure, that\'s fine.', 'Okay. For the key. Sure.', 'Ten more. Okay.']), [reply('(take the payment)', () => { if (st.coupon && !ci.coupon) return couponNode(s, p, ci); return tender(s, p, ci); })]);
+  }));
   return say(p, ci.said ? L(s, p, 'systemWait') : L(s, p, 'confirm'), choices);
 }
 
@@ -486,10 +493,22 @@ export function checkoutNode(s, p) {
       s.g.sound.keys(0);
     }
     const like = roomReview(s, p);
-    return say(p, `${L(s, p, 'checkout')}${like ? `\n\n${like}` : ''}`, [
+    const next = [
       reply('Let me print your receipt.', () => { co.wantsReceipt = true; return null; }),
       reply(f && s.ledger.balance(f) <= 0.004 ? 'You\'re all paid up. Safe travels.' : 'You\'re all set. Safe travels.', () => { co.skipReceipt = true; return goodbye(s, p, co); }),
-    ]);
+    ];
+    const opening = `${L(s, p, 'checkout')}${like ? `\n\n${like}` : ''}`;
+    if (f && f.deposit) {
+      return say(p, `${opening}\n\nAnd the deposit. The ten dollars, for the key.`, [
+        reply('(Ten dollars out of the drawer, and a paid-out slip.) Here you go.', () => {
+          co.refunded = true; f.deposit = 0;
+          s.ledger.payOut(10, 'KEY DEPOSIT REFUND', true);
+          s.g.sound.cashDrawer(); s.g.sound.pen();
+          return say(p, 'Thanks.', next);
+        }),
+      ]);
+    }
+    return say(p, opening, next);
   }
   const rc = s.heldOf('receipt', (it) => it.room === p.room);
   if (rc) {

@@ -349,3 +349,16 @@ body.cine #letterbox-top,body.cine #letterbox-bot{height:11cqh}
   #cabinet{display:none}
   #rotate{display:block;color:var(--neon);font-family:monospace;padding:2rem;text-align:center}
 }
+
+/* ---------------- the end of the shift ---------------- */
+#panel-body.endscreen{width:92cqw;max-height:92cqh;overflow-y:auto;padding:1.4cqw 1.6cqw}
+.endwrap{display:flex;gap:1.6cqw;align-items:flex-start}
+.endwrap > div{flex:1 1 0;min-width:0}
+.endwrap .sheet{min-width:0;box-shadow:none}
+.endwrap .sheet.report{font-size:1.75cqw}
+.endwrap .sheet.report h2{font-size:2.1cqw}
+.endwrap .sheet.report table{font-size:1.75cqw}
+.endwrap .sheet.note{font-size:1.9cqw;line-height:1.35;transform:none;max-width:none;min-width:0}
+.endwrap .sheet.note p{margin-bottom:.6cqw}
+#panel-body .endwrap table{font-size:1.7cqw}
+#panel-body .endwrap td{line-height:1.25;padding:.1cqw .3cqw}
