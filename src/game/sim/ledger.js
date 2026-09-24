@@ -80,6 +80,13 @@ export class Ledger {
   folio(id) { return this.folios.find((f) => f.id === id) || null; }
   folioForRoom(no) { return this.folios.find((f) => f.open && f.room === String(no)) || null; }
   charge(f, desc, amt, at = 0) { f.charges.push({ desc, amt: r2(amt), at }); }
+  /** Room and tax for the whole stay, rewritten from the folio's rate and nights. */
+  recharge(f, at = 0) {
+    f.charges = f.charges.filter((c) => !c.desc.startsWith('ROOM') && c.desc !== 'TAX');
+    const room = r2(f.rate * f.nights);
+    this.charge(f, `ROOM ${f.nights}N @ ${f.rate.toFixed(2)}`, room, at);
+    this.charge(f, 'TAX', r2(room * TAX), at);
+  }
   pay(f, type, amt, ref = '', at = 0) { f.payments.push({ type, amt: r2(amt), ref, at }); }
   balance(f) { return r2(f.charges.reduce((a, c) => a + c.amt, 0) - f.payments.reduce((a, p) => a + p.amt, 0)); }
   /** What a stay costs, all nights, tax in. */

@@ -12,7 +12,7 @@
    And the interstate goes by all night, both ways.
    ============================================================ */
 import { angleTowards } from '../../engine/mathx.js';
-import { DRIVE, STALLS, OFFICE_STALLS, ROOM_BY_NO } from '../world/layout.js';
+import { DRIVE, STALLS, OFFICE_STALLS, OVERFLOW, ROOM_BY_NO } from '../world/layout.js';
 import { buildCarMesh } from '../world/props.js';
 
 let seq = 1;
@@ -45,7 +45,7 @@ export class Cars {
       state: 'gone', route: null, ri: 0, stall: null, lights: false, waitT: 0,
     };
     c.mesh = this.mesh(c.color, c.kind, c.side);
-    c.solid = { x0: 0, x1: 0, z0: 0, z1: 0, lv: 0, on: false };
+    c.solid = { x0: 0, x1: 0, z0: 0, z1: 0, lv: 0, on: false, skip: (who) => !!(who && who.ghost) };
     this.solids.push(c.solid);
     this.list.push(c);
     return c;
@@ -84,12 +84,24 @@ export class Cars {
     c.x = DRIVE.enterFrom.x; c.z = DRIVE.laneWB; c.yaw = -Math.PI / 2;
   }
   stallNearOffice() {
-    return this.freeStall(STALLS.slice().sort((a, b) => Math.hypot(a.x - 4, a.z) - Math.hypot(b.x - 4, b.z))) || STALLS[0];
+    return this.freeStall(STALLS.slice().sort((a, b) => Math.hypot(a.x - 4, a.z) - Math.hypot(b.x - 4, b.z))) || this.freeStall(OVERFLOW) || OVERFLOW[0];
+  }
+
+  /** Straight in off the highway to the stall in front of a room (a guest back from supper). */
+  arriveTo(c, no, onPark) {
+    const st = this.stallForRoom(no) || this.freeStall(STALLS) || this.freeStall(OVERFLOW) || OVERFLOW[0];
+    const route = [
+      { x: DRIVE.enterFrom.x, z: DRIVE.laneWB }, { x: 18, z: DRIVE.laneWB }, { x: 12.5, z: -18.6 }, DRIVE.gate,
+      { x: 10.3, z: 7.6 }, { x: st.lane > 0 ? 3.4 : -3.4, z: 7.0 }, { x: st.lane, z: st.z }, { x: st.x, z: st.z },
+    ];
+    this.go(c, route, st, onPark);
+    c.x = DRIVE.enterFrom.x; c.z = DRIVE.laneWB; c.yaw = -Math.PI / 2;
   }
 
   /** From wherever it is to the stall in front of a room. */
   toRoom(c, no, onPark) {
-    const st = this.stallForRoom(no) || this.freeStall(STALLS);
+    const st = this.stallForRoom(no) || this.freeStall(STALLS) || this.freeStall(OVERFLOW);
+    if (!st) { if (onPark) onPark(); return; }      // nowhere left: it stays under the canopy
     const route = this.backOut(c);
     const laneX = st.lane;
     route.push({ x: laneX > 0 ? 3.4 : -3.4, z: 7.0 }, { x: laneX, z: st.z }, { x: st.x, z: st.z });
@@ -107,7 +119,7 @@ export class Cars {
     const out = [];
     if (c.state === 'parked' && c.stall) {
       const s = c.stall;
-      const bx = s.office ? s.x : s.x + (s.lane > 0 ? -1 : 1) * 3.8;
+      const bx = s.office ? s.x : s.x + Math.sign(s.lane - s.x) * 3.8;
       const bz = s.office ? s.z + 4.0 : s.z;
       out.push({ x: bx, z: bz, rev: true });
       s.taken = null;

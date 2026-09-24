@@ -295,6 +295,12 @@ export const DRIVE = {
 export const STALLS = [];
 for (let i = 0; i < 7; i++) STALLS.push({ id: 'W' + i, x: -9.1, z: 4 + 1.8 + i * 3.6, yaw: -Math.PI / 2, lane: -3.4 });
 for (let j = 0; j < 6; j++) STALLS.push({ id: 'E' + j, x: 9.1, z: 29.2 - 1.8 - j * 3.6, yaw: Math.PI / 2, lane: 3.4 });
+/* When every room's stall is taken, people park down the middle of the lot. */
+export const OVERFLOW = [];
+for (let k = 0; k < 4; k++) {
+  OVERFLOW.push({ id: 'MW' + k, x: -1.25, z: 6.2 + k * 3.6, yaw: Math.PI / 2, lane: -3.4 });
+  OVERFLOW.push({ id: 'ME' + k, x: 1.25, z: 6.2 + k * 3.6, yaw: -Math.PI / 2, lane: 3.4 });
+}
 
 
 /* ---------------- spots people are steered to ---------------- */

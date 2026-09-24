@@ -27,6 +27,7 @@ export const ITEMS = {
   batteries: { label: () => 'AA BATTERIES', mesh: 'batteries' },
   remote: { label: () => 'SPARE REMOTE', mesh: 'remote' },
   plunger: { label: () => 'PLUNGER', mesh: 'plunger' },
+  iron: { label: () => 'IRON', mesh: 'box' },
   lost: { label: (it) => it.what || 'SOMEBODY\'S THING', mesh: 'lostItem' },
   coinBag: { label: (it) => `COIN BAG $${it.amount.toFixed(2)}`, mesh: 'box' },
   sodaCase: { label: () => 'CASE OF SODA', mesh: 'box', bulky: true },
@@ -45,9 +46,12 @@ export const ITEMS = {
 };
 
 let seq = 1;
+/* Small things ride in a shirt pocket and do not take a hand. */
+export const POCKET = new Set(['key', 'master', 'card', 'slip', 'voucher', 'coupon', 'receipt', 'checks', 'coinBag']);
+
 export function makeItem(kind, extra = {}) {
   const def = ITEMS[kind];
-  return { id: seq++, kind, mesh: def.mesh, bulky: !!def.bulky, ...extra };
+  return { id: seq++, kind, mesh: def.mesh, bulky: !!def.bulky, pocket: POCKET.has(kind), ...extra };
 }
 export function itemLabel(it) {
   const def = ITEMS[it.kind];

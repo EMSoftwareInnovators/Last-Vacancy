@@ -28,6 +28,7 @@ export class Rooms {
       this.map[r.no] = {
         no: r.no, def: r, lv: r.lv,
         status: 'VC',              // the tab on the rack
+        sys: 'VC',                 // what the property system believes
         keys: 2,                   // keys hanging on its hook
         keysOut: 0,                // keys with guests
         guest: null,               // person id of whoever is registered (the system's view)
@@ -62,8 +63,9 @@ export class Rooms {
   register(no, guest, party) {
     const st = this.get(no);
     st.guest = guest.id; st.guestName = guest.name; st.party = party || 1;
-    st.noDisclose = !!guest.noDisclose;
+    st.noDisclose = !!(guest.noDisclose || (guest.stay && guest.stay.noDisclose));
     st.reservedFor = null;
+    st.sys = 'OC';
     return st;
   }
   checkout(no) {
@@ -71,6 +73,7 @@ export class Rooms {
     st.lastGuest = st.guestName;
     st.guest = null; st.guestName = ''; st.party = 0; st.noDisclose = false; st.dnd = false; st.wake = null;
     st.cleaned = false;
+    st.sys = 'VD';
     return st;
   }
 
@@ -90,7 +93,7 @@ export class Rooms {
   setTab(no, status) { const st = this.get(no); if (st) st.status = status; }
 
   /* ---------------- questions ---------------- */
-  sellable(st) { return st.status === 'VC' && !st.guest; }
+  sellable(st) { return st.sys === 'VC' && !st.guest; }
   vacantClean() { return this.all().filter((s) => this.sellable(s)); }
   occupiedBySystem() { return this.all().filter((s) => !!s.guest); }
   keysOut() { return this.all().reduce((n, s) => n + (2 - s.keys), 0); }
@@ -140,7 +143,7 @@ export class Rooms {
     const out = {};
     for (const st of this.all()) {
       out[st.no] = {
-        status: st.status, keys: st.keys, guest: st.guest, guestName: st.guestName, party: st.party,
+        status: st.status, sys: st.sys, keys: st.keys, guest: st.guest, guestName: st.guestName, party: st.party,
         issues: [...st.issues], noDisclose: st.noDisclose, cleaned: st.cleaned, lastGuest: st.lastGuest,
       };
     }

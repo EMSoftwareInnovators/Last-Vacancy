@@ -117,8 +117,14 @@ export class NPCs {
     p.moving = true;
     if (d > 0.05) p.yaw = angleTowards(p.yaw, Math.atan2(dx, dz), dt * 7.5);
     // stuck on something: after a moment, slip through it rather than stand there all night
-    if (moved < sp * dt * 0.2) { p.stuckT += dt; if (p.stuckT > 1.6) { p.ghost = true; } }
-    else { p.stuckT = Math.max(0, p.stuckT - dt); if (p.stuckT < 0.2) p.ghost = false; }
+    if (moved < sp * dt * 0.2) {
+      p.stuckT += dt;
+      if (p.stuckT > 1.6) p.ghost = true;
+      // still stuck on something the map did not know about: give up on this
+      // waypoint, and if that does not help, squeeze past it
+      if (p.stuckT > 3.2 && !last) { p.pathI++; p.stuckT = 1.7; }
+      else if (p.stuckT > 5.5) { p.x = wp.x; p.z = wp.z; p.lv = wp.lv; settleLevel(p); p.stuckT = 0; }
+    } else { p.stuckT = Math.max(0, p.stuckT - dt); if (p.stuckT < 0.2) p.ghost = false; }
     p._stepT = (p._stepT || 0) - dt * Math.max(0.2, p.moveSpeed);
     if (p._stepT <= 0) { p._stepT = 0.62; this.s.footstep(p); }
     return false;
@@ -258,7 +264,7 @@ export const inRoom = (untilMin, o = {}) => ({
     const [x, z] = toWorld(r, r.doorHi ? 3.6 - 1.25 : 1.25, 3.0);
     p.x = x; p.z = z; p.lv = r.lv; settleLevel(p);
     p.yaw = r.yaw - (r.doorHi ? -Math.PI / 2 : Math.PI / 2);
-    p.sit = true; p.inRoom = true;
+    p.sit = true; p.inRoom = true; p.hidden = false;
     const st = s.rooms.get(p.room);
     st.occupied = true; st.awake = !o.asleep; st.lightsOn = !o.asleep; st.tvOn = !o.asleep && Math.random() < 0.7;
     p.asleep = !!o.asleep;
@@ -271,9 +277,9 @@ export const exitRoom = () => ({
   kind: 'exitRoom',
   start(p, s) {
     const r = ROOM_BY_NO[p.room];
-    p.inRoom = false; p.asleep = false; p.sit = false;
+    p.inRoom = false; p.asleep = false; p.sit = false; p.hidden = false;
     const st = s.rooms.get(p.room);
-    st.awake = true; st.lightsOn = true;
+    st.awake = true; st.lightsOn = !st.powerOut;
     p.x = r.inside.x; p.z = r.inside.z; p.lv = r.lv; settleLevel(p);
     s.g.doors.open(s.g.doors.room(p.room), 2.2);
   },

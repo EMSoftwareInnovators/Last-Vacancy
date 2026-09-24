@@ -74,6 +74,7 @@ export class Breakfast {
   /* ---------------- guests at the counter ---------------- */
   /** Which stations somebody visits, in counter order. */
   menuFor(p) {
+    if (p.menuOverride) return p.menuOverride.slice();
     const b = (p.def && p.def.breakfast) || { coffee: this.s.rng.chance(0.8) ? 'regular' : null, food: this.s.rng.pick(['pastry', 'cereal', 'bagels', 'fruit', 'waffle']) };
     const picks = [];
     if (b.coffee === 'regular') picks.push('coffee');
