@@ -1310,7 +1310,7 @@ export class Shift {
       waffle: st.waffleIncidents ? (st.waffleIncidents === 1 ? 'one incident. The ceiling tile above it is a new color' : `${st.waffleIncidents} incidents. I have started calling it "the situation"`) : '',
       breakfastShort: short && short[1] >= 2 ? ({ pastry: 'muffins', bagels: 'bagels', cereal: 'cereal', fruit: 'fruit', juice: 'juice', coffee: 'coffee', decaf: 'decaf', waffle: 'waffle batter' }[short[0]]) : '',
       coffeeGood: !!this.flags.coffeeOnTime && !st.shortages, calledJune: st.calledJune,
-      lostGuests: st.lostGuests, noVacancyMiss: st.noVacancyMiss > 0, turnedAwayWithRooms: st.turnedAwayWithRooms, walkedReservation: st.walkedReservation, droveBy: st.droveBy,
+      lostGuests: st.lostGuests, longWaits: st.longWaits || 0, noVacancyMiss: st.noVacancyMiss > 0, turnedAwayWithRooms: st.turnedAwayWithRooms, walkedReservation: st.walkedReservation, droveBy: st.droveBy,
       notes: this.notesLog.filter((n) => n.kind !== 'plain').slice(-10),
     };
     return r;

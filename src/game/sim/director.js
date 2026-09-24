@@ -724,6 +724,16 @@ export class Director {
     this.at(this.rnd([at(21, 40), at(22, 50)]), () => this.errand('vend'), 'vend');
     this.at(this.rnd([at(22, 30), at(23, 50)]), () => { s.property.jamIce(); this.errand('ice'); }, 'ice jam');
     this.at(this.rnd([at(20, 50), at(21, 40)]), () => this.errand('ice'), 'ice');
+    // somebody walks down to ask something (food, an iron, HBO, a late checkout, quarters)
+    const nq = 1 + rng.int(2);
+    for (let i = 0; i < nq; i++) {
+      this.at(this.rnd([at(20, 30), at(23, 30)]), () => {
+        const awake = s.npcs.list.filter((p) => p.inRoom && !p.asleep && p.room && p.stay && !p.followsLeader && !p.groupMember && p.act && p.act.kind === 'inRoom');
+        if (!awake.length) return;
+        const p = awake[Math.floor(rng() * awake.length)];
+        s.guestComesDown(p, { kind: 'question', i: rng.int(5) });
+      }, 'question');
+    }
     // one noise complaint, if there is anybody to make noise and anybody to hear it
     this.at(this.rnd([at(21, 35), at(22, 30)]), () => this.noise(), 'noise');
   }

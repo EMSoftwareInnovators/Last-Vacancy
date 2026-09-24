@@ -681,7 +681,7 @@ const QUESTIONS = [
 function questionNode(s, p, c) {
   const Q = QUESTIONS[c.i % QUESTIONS.length];
   return say(p, Q.q, [
-    reply(Q.good, () => { p.mood += 3; if (Q.task) s.tasks.add({ ...Q.task, room: p.room, who: p.id, text: `${Q.task.text} to ${p.room}`, item: 'towels' }); s.finishDesk(p, 'question'); return say(p, Q.goodR, [reply('Good night.', () => null)]); }),
+    reply(Q.good, () => { p.mood += 3; if (Q.task) s.tasks.add({ ...Q.task, room: p.room, who: p.id, text: `${Q.task.text} to ${p.room}` }); s.finishDesk(p, 'question'); return say(p, Q.goodR, [reply('Good night.', () => null)]); }),
     reply(Q.bad, () => { p.mood -= 2; s.finishDesk(p, 'question'); return say(p, Q.badR, [reply('Good night.', () => null)]); }),
   ]);
 }

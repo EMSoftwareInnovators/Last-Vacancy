@@ -59,6 +59,8 @@ export function juneNote(r) {
   if (r.waffle) out.push(`The waffle iron: ${r.waffle}.`);
   if (r.breakfastShort) out.push(`Breakfast ran out of ${r.breakfastShort}. We have a pantry. It's twenty feet from the counter.`);
   if (r.coffeeGood) out.push('Coffee was on time. People noticed. People always notice coffee, they just only tell you when it\'s wrong.');
+  if (r.longWaits >= 2) out.push(`${r.longWaits === 2 ? 'Two people' : `${r.longWaits} people`} told me they stood at the desk a long time. I believe them; they were specific about it. If you have to be away from the desk, be away fast.`);
+  else if (r.longWaits === 1) out.push('Somebody waited at the desk a while. It happens. The bell is loud for a reason.');
   if (r.tasksLeft) out.push(`${r.tasksLeft} thing${r.tasksLeft > 1 ? 's' : ''} somebody asked for didn't get done. I heard about ${r.tasksLeft > 1 ? 'some of them' : 'it'} from Travis, who heard about it from the guest, who heard about it from nobody, which was the problem.`);
   if (r.noVacancyMiss) out.push('We were full and the sign still said VACANCY. People pulled in to find that out. The switch is by the key rack.');
   if (r.turnedAwayWithRooms) out.push('You sent somebody up the road to the Ramada with clean rooms on the rack. The Ramada thanks you.');

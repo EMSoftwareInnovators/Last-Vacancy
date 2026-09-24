@@ -71,6 +71,12 @@ export class Desk {
         if (p.bellRung === 3) this.s.bark(p, 'wait');
       }
       if (p.deskWait > p.patience) p.mood = Math.max(0, p.mood - dt * 0.6);
+      if (p.deskWait > p.patience * 1.6 && !p.flags.longWait) {
+        p.flags.longWait = true;
+        this.s.stats.longWaits = (this.s.stats.longWaits || 0) + 1;
+        this.s.log(`${p.name} stood at the desk a long time.`, 'note');
+        this.s.bark(p, 'waitLong');
+      }
     }
   }
 
