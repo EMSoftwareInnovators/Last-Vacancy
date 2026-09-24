@@ -291,6 +291,17 @@ const result = await T.ev(async (opts) => {
   };
 }, args);
 
+// frame time where it is busiest: --perf=x,z,yaw
+if (args.perf) {
+  const [x, z, yaw] = String(args.perf).split(',').map(Number);
+  const r = await T.ev(async ({ x, z, yaw }) => {
+    const g = window.__game; const p = g.player; p.x = x; p.z = z; p.yaw = yaw; p.pitch = -0.05; g.shift.mode = null;
+    const t0 = performance.now(); let n = 0;
+    await new Promise((res) => { const tick = () => { n++; if (performance.now() - t0 > 4000) res(); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+    return { fps: n / ((performance.now() - t0) / 1000), tris: g.stats.tris, people: g.shift.people().length };
+  }, { x, z, yaw });
+  console.log('PERF', JSON.stringify(r));
+}
 // pictures, after the run stops: --shots="name:x,z,yaw,pitch[,lv];..."
 if (args.shots) {
   const { mkdirSync } = await import('node:fs');

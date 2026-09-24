@@ -46,20 +46,22 @@ Source inspected: `EMSoftwareInnovators/Final-Rental` at `5946346`.
 
 ## 3. New in Last Vacancy
 
-- **Shift clock with periods** (`sim/clock.js`): 7 PM–7 AM, busy periods run slower in real time, quiet ones faster, conversations run the clock at half speed.
-- **Room model** (`sim/rooms.js`): 28 rooms with traits (quiet, noisy AC, near ice, smell, renovated, poolside, TV reception, weak shower, adjoining pair, smoking), status, occupant, issues, key location.
-- **Key rack / room board**: physical keys on hooks with status tabs, live texture on the wall and a close-up view.
-- **Property system** (`ui/terminal.js`): STARLITE MOTOR LODGE PROPERTY SYSTEM v2.4: F1 check-in, F2 check-out, F3 rooms, F4 reservations, F5 night audit.
-- **Payments**: cash and change, credit card imprinter (hold to chunk), traveler's checks, corporate vouchers against an account list, travel-book coupons with conditions.
-- **Phone console** with two lines, hold, transfer, privacy flags (DO NOT DISCLOSE), room calls and wake-ups.
-- **Requests and property tasks** (`sim/tasks.js`): deliveries, fixes (TV, AC, toilet, bulb, remote batteries, breaker), rollaway, noise complaints, vending refill and refunds, ice machine, pool gate, laundry, trash, spills.
-- **Wake-up sheet** on the counter.
-- **Night audit** worksheet comparing the system against the drawer, the slip box and the key rack.
-- **Breakfast**: pantry inventory, coffee (regular / decaf / hot water, freshness read through dialogue), juice, stocked trays, waffle station with occasional chaos, newspapers to fetch and cut, breakfast TV channels, spills, trash.
-- **Shift director** (`sim/director.js`, `content/shifts.js`): data-driven nights, reservations, walk-ins, group bookings, phone calls and events with preconditions and time windows; seeded so each replay differs.
-- **Persistent memory** (`engine/save.js`, `sim/memory.js`): guest histories, room assignments, relationships, residents, inventory, the owner's notes.
-- **Overheard talk** (`sim/barks.js`): NPC-to-NPC exchanges shown as subtitles within earshot.
-- **Staff**: the owner's notes, the housekeeper, the morning clerk and the handoff.
+- **Shift clock with periods** (`sim/clock.js`): 7 PM–7 AM, busy periods run slower in real time, quiet ones faster, conversations run the clock at half speed, the desk stool runs it fast until something needs you.
+- **Room model** (`sim/rooms.js`): 28 rooms with traits (quiet, noisy AC, near ice, smell, renovated, poolside, TV reception, weak shower, adjoining pair, smoking, 213), a rack tab, a *separate* system status, occupant, issues, and keys on the hook. The rack and the system are allowed to disagree; the audit finds out.
+- **Key rack** (`ui/board.js`): 28 hooks, two keys each, colored tabs (CLEAN / DIRTY / OCC / RSVD / O-O-O / MAINT), pull a whole group block at once.
+- **Property system** (`ui/terminal.js`): STARLITE MOTOR LODGE PROPERTY SYSTEM v2.4 — F1 check-in form fed by what you actually asked the guest, F2 check-out (single or whole block), F3 rooms, F4 reservations, F5 night audit.
+- **Payments** (`dialogue/desk.js`, `sim/ledger.js`): cash to the register with change back into your hand, card imprinter (hold to chunk; they sign; expiry you can catch), traveler's checks (countersign in front of you), corporate vouchers against the binder's accounts, travel-book and homemade coupons, a $10 key deposit for cash guests, paid-outs with slips.
+- **Phone console** (`sim/phone.js`, `dialogue/calls.js`): two lines, HOLD offered when something else wants you, transfer to a room, calling rooms (wake-ups) and June at home, privacy rules and DO NOT DISCLOSE guests.
+- **Requests and property tasks** (`sim/tasks.js`, `interact.js`): deliveries, fixes inside the room (TV, AC, toilet, faucet, lamp), noise complaints at the door, messages under the door, room moves, wrong keys, the vending refund, the ice machine jam, the pool gates at ten, the breaker panel, the NO PET'S sign.
+- **Wake-up sheet** by the phone; missed calls mean the guest oversleeps and comes to tell you so.
+- **Night audit**: no-shows, rack vs system, the drawer count, card slips, vouchers, posting — each step in plain words.
+- **Breakfast** (`sim/breakfast.js`): pantry inventory (coffee 4, decaf 2, milk 2, OJ 3, muffins 18, bagels 12, cereal 22, waffle mix LOW), coffee freshness and strength heard from people, juice, milk, trays, the waffle iron and its incidents, spills and the mop, the papers to fetch and cut, the breakfast TV and people asking for channels, and the rush from groups nobody draws.
+- **Shift director** (`sim/director.js`): each night built from the calendar and memory — in-house guests and weekly residents, reservations and group blocks, roster arrivals, rolled walk-ins (`content/travelers.js`), room problems, outside calls, visits, the papers, staff — in time windows re-rolled every shift.
+- **Groups** (`content/groups.js`): the Tri-Parish paving crew on weeknights (4 rooms, voucher, stays on), a 14-room travel ball team on Friday (three pots gone by 6:20), a 10-room tour bus on Saturday (wake-ups for every room at 5:30).
+- **People and voices** (`content/people.js`, `content/lines.js`, `dialogue/cast.js`): regulars, residents, one-offs, Final Rental cameos (Verna, Otis, Gordy), the deputy, Tammy from Peg's, Luz and Travis, each answering the desk's questions in their own way and remembering you across nights.
+- **Persistent memory** (`sim/memory.js`): guest histories and opinions, who you gave what room, flags (the sign, the coffee), carry-over guests and the crew, inventory, and June's note for the next night.
+- **Overheard talk** (`sim/barks.js`, `content/chatter.js`): barks within earshot, and written breakfast exchanges between particular people when they share a table.
+- **Owner's notes and the shift log** (`content/notes.js`): no stars, no grades.
 
 ## 4. Deliberately not carried over
 

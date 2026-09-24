@@ -7,8 +7,9 @@
   "scripts": {
     "start": "node serve.cjs",
     "dev": "node serve.cjs",
-    "check": "node tools/check.mjs",
-    "shots": "node tools/shots.mjs",
+    "check": "node tools/smoke.mjs 120 && node tools/playtest.mjs",
+    "night": "node tools/autopilot.mjs",
+    "shots": "node tools/uishots.mjs",
     "app": "electron .",
     "dist": "electron-builder --publish never"
   },
