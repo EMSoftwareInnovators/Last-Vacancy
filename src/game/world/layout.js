@@ -271,22 +271,31 @@ export const POLES = [
 
 /* ---------------- parking ---------------- */
 export const OFFICE_STALLS = [
-  { x: 0.9, z: 3.0, yaw: Math.PI }, { x: 2.35, z: 3.0, yaw: Math.PI },
-  { x: 5.4, z: 3.0, yaw: Math.PI }, { x: 6.85, z: 3.0, yaw: Math.PI },
+  { id: 'O0', x: 1.3, z: 3.1, yaw: Math.PI, office: true }, { id: 'O1', x: 6.7, z: 3.1, yaw: Math.PI, office: true },
 ];
 /** Where cars come off the highway, and how they get round the lot. */
+/* Westbound traffic keeps to the north lane (z -19.2), which is the motel's
+   side of the road: arrivals come in from the east and turn right, and
+   leavers turn right again and head west. */
 export const DRIVE = {
-  enterFrom: { x: 30, z: -20.5 },
-  gate: { x: 10.3, z: -17.5 },
+  enterFrom: { x: 60, z: -19.2 },
+  gate: { x: 10.3, z: -17.2 },
   inLane: { x: 10.3, z: -2 },
   hub: { x: 3.2, z: 7.0 },
-  laneW: { x: -3.6, z: 12 },
-  laneE: { x: 3.6, z: 12 },
+  laneW: { x: -3.4, z: 12 },
+  laneE: { x: 3.4, z: 12 },
   outLane: { x: -10.3, z: 1.0 },
-  outGate: { x: -10.3, z: -17.5 },
-  exitTo: { x: -40, z: -22.5 },
-  bus: { x: -1.5, z: 14.5, yaw: 0 },
+  outGate: { x: -10.3, z: -17.2 },
+  exitTo: { x: -70, z: -19.2 },
+  bus: { x: -1.2, z: 15.0, yaw: 0 },
+  laneWB: -19.2, laneEB: -22.4,
 };
+/* One stall per ground-floor room; upstairs rooms park in front of the room
+   below. 114 and 115 have none of their own and use the north end of the rows. */
+export const STALLS = [];
+for (let i = 0; i < 7; i++) STALLS.push({ id: 'W' + i, x: -9.1, z: 4 + 1.8 + i * 3.6, yaw: -Math.PI / 2, lane: -3.4 });
+for (let j = 0; j < 6; j++) STALLS.push({ id: 'E' + j, x: 9.1, z: 29.2 - 1.8 - j * 3.6, yaw: Math.PI / 2, lane: 3.4 });
+
 
 /* ---------------- spots people are steered to ---------------- */
 export const SPOTS = {
