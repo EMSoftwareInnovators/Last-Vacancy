@@ -22,6 +22,7 @@ const pickChoice = async (re) => {
   await wait(250);
   return true;
 };
+const stand = (x, z) => ev(({ x, z }) => { const p = window.__game.player; p.x = x; p.z = z; p.vx = p.vz = 0; }, { x, z });
 const faceGuest = async () => { const g = await ev(() => { const f = window.__game.shift.desk.front(); return f ? { x: f.x, z: f.z, id: f.id } : null; }); if (g) await aim(g.x, 1.45, g.z); return g; };
 
 await ev(() => { window.__game.sound.muted = true; });
@@ -89,7 +90,17 @@ st = await state();
 const pay = await ev((id) => { const p = window.__game.shift.npcs.find(id); return { stage: p.ci.stage, pay: p.stay.pay }; }, guest.id);
 console.log('   paying by', pay.pay, 'stage', pay.stage, st.dlg && st.dlg.choices);
 if (pay.stage === 'voucher') await pickChoice('on file');
-else if (pay.stage === 'cash') { await pickChoice('register'); await aim(5.16, 1.25, -4.72); await wait(250); console.log('   register prompt:', (await state()).prompt); await key('KeyE'); await wait(300); await faceGuest(); await key('KeyE'); await wait(300); await pickChoice('change'); await wait(300); }
+else if (pay.stage === 'cash') {
+  await pickChoice('register');
+  await stand(4.4, -5.5);                                // a step down the counter to the register
+  await aim(5.16, 1.25, -4.72); await wait(250);
+  const rp = (await state()).prompt; console.log('   register prompt:', rp);
+  check(`[${round}] ` + 'register offers to ring it up', /Ring up/.test(rp), rp);
+  await key('KeyE'); await wait(300);
+  await stand(2.9, -5.5);
+  await faceGuest(); await key('KeyE'); await wait(300);
+  await pickChoice('change'); await wait(300);
+}
 else if (pay.stage === 'card') {
   await pickChoice('imprinter');
   await aim(4.41, 1.12, -4.78); await wait(250);
