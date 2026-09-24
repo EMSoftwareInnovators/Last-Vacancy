@@ -1,0 +1,36 @@
+{
+  "name": "last-vacancy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LAST VACANCY - a first-person 1997 roadside motel night-clerk simulator, built on the Final Rental engine",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node serve.cjs",
+    "dev": "node serve.cjs",
+    "check": "node tools/check.mjs",
+    "shots": "node tools/shots.mjs",
+    "app": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "engines": { "node": ">=18" },
+  "main": "electron/main.js",
+  "productName": "Last Vacancy",
+  "author": "EM Software Innovators",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "playwright-core": "^1.56.1"
+  },
+  "build": {
+    "appId": "com.emsoftwareinnovators.lastvacancy",
+    "productName": "Last Vacancy",
+    "copyright": "(c) 2026 EM Software Innovators",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["index.html", "src/**/*", "electron/**/*", "package.json", "!**/{.DS_Store,.git,.github,node_modules}"],
+    "asar": true,
+    "win": { "target": [{ "target": "zip", "arch": ["x64"] }], "artifactName": "last-vacancy-${version}-windows-${arch}.${ext}" },
+    "mac": { "target": [{ "target": "zip", "arch": ["x64", "arm64"] }], "category": "public.app-category.games", "artifactName": "last-vacancy-${version}-macos-${arch}.${ext}" },
+    "linux": { "target": [{ "target": "AppImage", "arch": ["x64"] }], "category": "Game", "artifactName": "last-vacancy-${version}-linux-${arch}.${ext}" }
+  }
+}
