@@ -229,6 +229,8 @@ export class Game {
   updatePanelMenu() {
     const i = this.input;
     if (this.state === ST.HOWTO) {
+      if (i.hit('ArrowDown', 'KeyS')) this.ui.scrollPanel(90);
+      if (i.hit('ArrowUp', 'KeyW')) this.ui.scrollPanel(-90);
       if (this.confirmHit() || this.backHit()) {
         this.quietly(() => this.sound.uiBack());
         this.ui.hidePanel();
@@ -379,14 +381,16 @@ export class Game {
     const zone = zoneAt(this.player.x, this.player.z, this.player.lv);
     const inOffice = zone === 'desk' || zone === 'lobby' || zone === 'breakfast' || zone === 'pantry' || zone === 'backoffice';
     const through = INDOOR(zone) ? 0.35 : 1;
-    s.placeLoop('highway', this.player.x, -22, 0.35, 70, INDOOR(zone) ? 0.25 : 1);
+    const title = !shift;
+    s.setScene(title ? 'title' : 'play');
+    s.placeLoop('highway', this.player.x, -22, title ? 0.06 : 0.2, 70, INDOOR(zone) ? 0.25 : 1);
     s.placeLoop('ice', 8.2, 33.8, 0.45, 16, through);
     s.placeLoop('vending', 6.5, 33.8, 0.35, 12, through);
     s.placeLoop('pool', 5.2, 28.2, 0.35, 14, through);
-    s.placeLoop('neon', -17.5, -14.2, 0.18, 10, through);
+    s.placeLoop('neon', -17.5, -14.2, title ? 0.1 : 0.18, 10, through);
     s.placeLoop('crt', 1.4, -4.7, inOffice ? 0.25 : 0, 4, 1);
     const r104 = shift && shift.rooms ? shift.rooms.get('104') : null;
-    const acOn = !r104 || r104.occupied;
+    const acOn = !title && (!r104 || r104.occupied);
     s.placeLoop('acBad', -14.6, 16.6, acOn ? 0.5 : 0.2, 11, zone === 'room:104' ? 1.4 : through);
     const nearAc = shift && shift.rooms ? shift.rooms.nearestRunningAc(this.player.x, this.player.z, this.player.lv) : null;
     if (nearAc) s.placeLoop('ac', nearAc.x, nearAc.z, 0.35, 8, through);

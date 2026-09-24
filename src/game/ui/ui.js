@@ -243,11 +243,23 @@ export class UI {
   hidePaper() { this.el.paper.classList.add('hidden'); document.body.classList.remove('talking'); this._ph = null; }
 
   /* ---------------- panels ---------------- */
-  showPanel(html) { this.el.panel.classList.remove('hidden'); this.el.panelBody.innerHTML = html; }
-  hidePanel() { this.el.panel.classList.add('hidden'); }
+  showPanel(html) {
+    this.el.panel.classList.remove('hidden');
+    document.body.classList.add('panel-open');
+    if (this._panelHtml !== html) { this._panelHtml = html; this.el.panelBody.innerHTML = html; this.el.panelBody.scrollTop = 0; }
+  }
+  hidePanel() { this.el.panel.classList.add('hidden'); document.body.classList.remove('panel-open'); this._panelHtml = null; }
+  /** Keep the highlighted row of a long menu in view. */
+  scrollPanel(dy) { this.el.panelBody.scrollTop += dy; }
   panelSelect(i) {
     const opts = this.el.panelBody.querySelectorAll('li.opt');
     opts.forEach((o, n) => o.classList.toggle('sel', n === i));
+    const sel = opts[i];
+    if (sel) {
+      const box = this.el.panelBody, top = sel.offsetTop, bot = top + sel.offsetHeight;
+      if (top < box.scrollTop) box.scrollTop = top - 8;
+      else if (bot > box.scrollTop + box.clientHeight) box.scrollTop = bot - box.clientHeight + 8;
+    }
     return opts.length;
   }
   showTitle(show, items) {

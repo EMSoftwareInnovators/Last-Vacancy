@@ -129,7 +129,8 @@ function makeRoom(no, wing, lv, ox, oz, yaw, idx) {
   room.outside = { x: dx, z: dz };                 // where you stand to knock
   const [ix, iz] = toWorld(room, dm, 1.1);
   room.inside = { x: ix, z: iz };                  // just inside the door
-  const [bx, bz] = toWorld(room, ROOM_W / 2, 3.2);
+  // the middle of the aisle between the dresser and the beds
+  const [bx, bz] = toWorld(room, doorHi ? ROOM_W - 1.05 : 1.05, 3.2);
   room.center = { x: bx, z: bz };
   const [hx, hz] = toWorld(room, room.door.x0, 0);
   room.hinge = { x: hx, z: hz };

@@ -892,6 +892,27 @@ export function buildTextures() {
   T.mirror = makeTex(32, 32, (g, w, h) => { fill(g, '#7a8a94', w, h); g.fillStyle = 'rgba(255,255,255,.2)'; g.beginPath(); g.moveTo(0, 22); g.lineTo(18, 0); g.lineTo(26, 0); g.lineTo(6, 32); g.fill(); g.strokeStyle = '#b8b0a0'; g.strokeRect(0.5, 0.5, w - 1, h - 1); });
   T.vanityTop = makeTex(32, 32, (g, w, h) => { fill(g, '#e0d8c0', w, h); speckle(g, w, h, 200, ['#d0c8b0', '#c8a878']); g.fillStyle = '#c8c4b8'; g.beginPath(); g.ellipse(16, 16, 7, 5, 0, 0, 7); g.fill(); noise(g, w, h, 4); });
   T.towel = makeTex(16, 32, (g, w, h) => { fill(g, '#f2f0ea', w, h); g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, 5, w, 2); g.fillRect(0, h - 7, w, 2); noise(g, w, h, 5); });
+  /* The desk phone: a two-line business set, beige, twelve keys and a row of line buttons. */
+  T.deskPhoneTop = makeTex(32, 32, (g, w, h) => {
+    fill(g, '#cbbd98', w, h);
+    g.fillStyle = '#b2a47e'; g.fillRect(0, 0, w, 3);
+    // line buttons across the top: LINE 1, LINE 2, HOLD, XFER
+    for (let i = 0; i < 4; i++) { g.fillStyle = '#3a342a'; g.fillRect(3 + i * 7, 5, 5, 4); g.fillStyle = '#e8dfc4'; g.fillRect(4 + i * 7, 6, 3, 2); }
+    // the keypad
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) { g.fillStyle = '#efe7cf'; g.fillRect(8 + c * 6, 12 + r * 5, 4, 3); g.fillStyle = '#6a6250'; g.fillRect(9 + c * 6, 13 + r * 5, 2, 1); }
+    noise(g, w, h, 4);
+  });
+  T.redLamp = makeTex(4, 4, (g, w, h) => fill(g, '#ff3a2a', w, h));
+  T.handsetDark = makeTex(16, 8, (g, w, h) => { fill(g, '#6e6048', w, h); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(0, 0, w, 2); noise(g, w, h, 4); });
+  T.handset = makeTex(16, 8, (g, w, h) => { fill(g, '#bfb08a', w, h); g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(0, h - 2, w, 2); noise(g, w, h, 4); });
+  T.wakeSheet = makeTex(32, 32, (g, w, h) => {
+    fill(g, '#6a4a2a', w, h);
+    g.fillStyle = '#f0ead8'; g.fillRect(3, 5, w - 6, h - 7);
+    g.fillStyle = '#b8b8b8'; g.fillRect(11, 2, 10, 5);
+    g.fillStyle = '#2a2418'; g.fillRect(6, 8, 14, 1);
+    g.fillStyle = 'rgba(40,60,120,.55)'; for (let i = 0; i < 7; i++) g.fillRect(6, 12 + i * 2.6, 6 + ((i * 7) % 12), 1);
+    noise(g, w, h, 4);
+  });
   T.phoneRoom = makeTex(16, 16, (g, w, h) => { fill(g, '#cfc3a4', w, h); g.fillStyle = '#5a5446'; g.fillRect(3, 6, 10, 7); g.fillStyle = '#c02020'; g.fillRect(12, 2, 2, 2); noise(g, w, h, 4); });
   T.ashtray = makeTex(16, 16, (g, w, h) => { fill(g, '#3a5a8a', w, h); g.fillStyle = '#1a1a1a'; g.beginPath(); g.arc(8, 8, 4, 0, 7); g.fill(); g.fillStyle = '#e8e0c8'; g.fillRect(9, 6, 5, 1); });
   T.noSmoking = makeTex(16, 16, (g, w, h) => { fill(g, '#efe9d6', w, h); g.strokeStyle = '#c02020'; g.lineWidth = 2; g.beginPath(); g.arc(8, 8, 6, 0, 7); g.stroke(); g.beginPath(); g.moveTo(4, 4); g.lineTo(12, 12); g.stroke(); });

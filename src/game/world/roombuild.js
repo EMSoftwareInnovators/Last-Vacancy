@@ -23,32 +23,43 @@ import { roomLight, outdoorLight } from './lighting.js';
 const WALL_T = 0.12;
 const IN = WALL_T;           // inside face of the facade
 const SX0 = 0.06, SX1 = W - 0.06, BZ = D - 0.06;
-const BATH_Z = 5.0, BATH_X = 2.0;
+/* The back of the room: the sink in an open nook at the end of the aisle,
+   and the bathroom beside it behind a wall, with a doorway off the nook. */
+const BACK_Z = 4.9;          // where the bedroom ends
+const BX = 1.95;             // the bathroom's side wall
+const BATH_DOOR = { z0: 5.15, z1: 6.0 };
 export const DOOR_L = { x0: 0.35, x1: 1.25, h: 2.1 };
 export const WIN_L = { x0: 1.7, x1: 3.25, y0: 0.95, y1: 2.05 };
+
+/* Where the beds and nightstands go, by bed type. Beds run across the room
+   with the headboard on the right-hand wall, leaving the aisle along the
+   left wall clear from the door to the sink. */
+function bedPlan(beds) {
+  if (beds === 'QQ') return { beds: [[0.72, 2.24], [2.9, 4.42]], stands: [2.57], table: false };
+  if (beds === 'K') return { beds: [[1.55, 3.55]], stands: [1.22, 3.88], table: true };
+  return { beds: [[1.85, 3.25]], stands: [1.52, 3.58], table: true };
+}
+const BED_X0 = 1.52, BED_X1 = 3.49;
 
 /** Pieces of furniture in room-local space, for collision and interaction. */
 export function roomFurniture(room) {
   const out = [];
   const add = (id, x0, z0, x1, z1, y1) => out.push({ id, x0, z0, x1, z1, y1 });
-  const bedsK = room.beds === 'K', bedsQ = room.beds === 'QQ';
-  if (bedsK) add('bed', 1.45, 2.05, 3.54, 4.15, 0.62);
-  else if (bedsQ) { add('bed', 1.46, 0.85, 3.54, 2.4, 0.62); add('bed2', 1.46, 3.2, 3.54, 4.75, 0.62); }
-  else add('bed', 1.59, 2.3, 3.54, 3.67, 0.62);
-  if (bedsQ) add('nightstand', 3.02, 2.5, 3.54, 3.1, 0.6);
-  else { add('nightstand', 3.02, bedsK ? 1.45 : 1.7, 3.54, bedsK ? 1.95 : 2.2, 0.6); add('nightstand2', 3.02, bedsK ? 4.25 : 3.8, 3.54, bedsK ? 4.75 : 4.3, 0.6); }
-  add('dresser', SX0, 2.3, 0.58, 3.9, 0.76);
-  add('tv', SX0 + 0.04, 2.85, 0.58, 3.35, 1.22);
+  const plan = bedPlan(room.beds);
+  plan.beds.forEach(([z0, z1], i) => add(i ? 'bed2' : 'bed', BED_X0, z0, SX1, z1, 0.62));
+  plan.stands.forEach((z, i) => add(i ? 'nightstand2' : 'nightstand', 3.02, z - 0.27, SX1, z + 0.27, 0.6));
+  add('dresser', SX0, 2.2, 0.56, 3.8, 0.76);
+  add('tv', SX0 + 0.04, 2.75, 0.56, 3.25, 1.22);
   add('ac', 1.95, IN, 2.95, 0.42, 0.85);
-  if (!bedsQ) add('table', 2.85, 0.62, 3.4, 1.14, 0.72);
-  add('rack', SX0, 1.2, 0.62, 1.8, 0.5);
-  add('tub', SX0, 5.12, 0.8, BZ, 0.5);
-  add('toilet', 1.35, 6.55, 1.75, BZ, 0.8);
-  add('vanity', 2.08, 6.55, SX1, BZ, 0.84);
-  // the partitions
-  add('wallBath', SX0, 4.96, 1.1, 5.04, H);
-  add('wallBath2', 1.9, 4.96, 2.04, 5.04, H);
-  add('wallBath3', 1.96, 5.0, 2.04, BZ, H);
+  add('rack', SX0, 1.0, 0.62, 1.6, 0.5);
+  if (plan.table) { add('table', 2.95, 0.45, 3.45, 0.85, 0.72); add('chair', 2.45, 0.5, 2.85, 0.9, 0.9); }
+  // the sink, and the bathroom behind its wall
+  add('vanity', SX0, 6.58, BX, BZ, 0.84);
+  add('wallBath', BX, BACK_Z, SX1, BACK_Z + 0.08, H);
+  add('wallBath2', BX, BACK_Z, BX + 0.08, BATH_DOOR.z0, H);
+  add('wallBath3', BX, BATH_DOOR.z1, BX + 0.08, BZ, H);
+  add('tub', BX + 0.08, 6.4, SX1, BZ, 0.5);
+  add('toilet', 3.12, 5.2, SX1, 5.62, 0.8);
   return out;
 }
 
@@ -67,39 +78,47 @@ export function buildRoomInterior(T, room) {
   const spread = reno ? T.bedspreadNew : T.bedspreads[(k >>> 5) % T.bedspreads.length];
   const art = T.art[(k >>> 7) % T.art.length];
   const mw = room.doorHi ? W : null;
+  const plan = bedPlan(room.beds);
 
   mb.at(room.ox, room.y, room.oz, room.yaw, (b) => {
     /* ---- shell ---- */
-    floor(b, SX0, IN, SX1, BATH_Z, 0, carpet, 1.0);
-    floor(b, SX0, BATH_Z, BATH_X, BZ, 0, T.bathTile, 1.0);
-    floor(b, BATH_X, BATH_Z, SX1, BZ, 0, T.pantryFloor, 1.0);
+    floor(b, SX0, IN, SX1, BACK_Z, 0, carpet, 1.0);
+    floor(b, SX0, BACK_Z, BX, BZ, 0, T.pantryFloor, 1.0);         // the sink nook: vinyl
+    floor(b, BX, BACK_Z, SX1, BZ, 0, T.bathTile, 1.0);            // the bathroom: tile
     ceiling(b, SX0, IN, SX1, BZ, H, T.popcornCeiling, 1.2);
     // facade, inside face, with the door and the window cut out of it
     wall(b, SX0, IN, SX1, IN, 0, H, paper, {
       holes: [{ a: DOOR_L.x0 - SX0, b: DOOR_L.x1 - SX0, y0: 0, y1: DOOR_L.h },
         { a: WIN_L.x0 - SX0, b: WIN_L.x1 - SX0, y0: WIN_L.y0, y1: WIN_L.y1 }],
     });
-    // the party wall the beds stand against, then the vanity alcove
-    wall(b, SX1, IN, SX1, BATH_Z, 0, H, paper);
-    wall(b, SX1, BATH_Z, SX1, BZ, 0, H, paper);
-    // the other party wall: bedroom, then the bathroom side
-    wall(b, SX0, BATH_Z, SX0, IN, 0, H, paper);
-    wall(b, SX0, BZ, SX0, BATH_Z, 0, H, T.bathWall);
-    // back wall: alcove, then bathroom
-    wall(b, SX1, BZ, BATH_X, BZ, 0, H, paper);
-    wall(b, BATH_X, BZ, SX0, BZ, 0, H, T.bathWall);
-    // bathroom partitions, both faces
-    wall2(b, BATH_X, BATH_Z, SX0, BATH_Z, 0, H, paper, T.bathWall, { holes: [{ a: 0.1, b: 0.9, y0: 0, y1: 2.05 }] });
-    wall2(b, BATH_X, BZ, BATH_X, BATH_Z, 0, H, paper, T.bathWall);
+    // the wall the headboards are on, then the bathroom behind it
+    wall(b, SX1, IN, SX1, BACK_Z + 0.04, 0, H, paper);
+    wall(b, SX1, BACK_Z + 0.04, SX1, BZ, 0, H, T.bathWall);
+    // the aisle wall runs all the way back past the sink
+    wall(b, SX0, BZ, SX0, IN, 0, H, paper);
+    // back wall: behind the sink, then the bathroom
+    wall(b, BX + 0.04, BZ, SX0, BZ, 0, H, paper);
+    wall(b, SX1, BZ, BX + 0.04, BZ, 0, H, T.bathWall);
+    // the bathroom's two walls, both faces, with a doorway off the nook
+    wall2(b, SX1, BACK_Z + 0.04, BX + 0.04, BACK_Z + 0.04, 0, H, paper, T.bathWall);
+    wall2(b, BX + 0.04, BACK_Z + 0.04, BX + 0.04, BZ, 0, H, paper, T.bathWall, {
+      holes: [{ a: BATH_DOOR.z0 - BACK_Z - 0.04, b: BATH_DOOR.z1 - BACK_Z - 0.04, y0: 0, y1: 2.05 }],
+    });
+    // the doorway's casing, and the corner post where the walls meet
+    b.solid(BX, 0, BATH_DOOR.z0 - 0.05, BX + 0.08, 2.1, BATH_DOOR.z0, T.doorFrame, [0, 0, 8, 64]);
+    b.solid(BX, 0, BATH_DOOR.z1, BX + 0.08, 2.1, BATH_DOOR.z1 + 0.05, T.doorFrame, [0, 0, 8, 64]);
+    b.solid(BX, 2.05, BATH_DOOR.z0 - 0.05, BX + 0.08, 2.12, BATH_DOOR.z1 + 0.05, T.doorFrame, [0, 0, 32, 8]);
+    b.solid(BX - 0.02, 0, BACK_Z - 0.02, BX + 0.1, H, BACK_Z + 0.1, T.doorFrame, [0, 0, 8, 64], ['ny']);
     // baseboards along the bedroom walls
-    b.solid(SX0, 0, IN, SX0 + 0.015, 0.09, BATH_Z, T.baseboard, [0, 0, 64, 16], ['ny']);
-    b.solid(SX1 - 0.015, 0, IN, SX1, 0.09, BATH_Z, T.baseboard, [0, 0, 64, 16], ['ny']);
+    b.solid(SX0, 0, IN, SX0 + 0.015, 0.09, 6.58, T.baseboard, [0, 0, 64, 16], ['ny']);
+    b.solid(SX1 - 0.015, 0, IN, SX1, 0.09, BACK_Z, T.baseboard, [0, 0, 64, 16], ['ny']);
+    b.solid(BX, 0, BACK_Z - 0.015, SX1, 0.09, BACK_Z, T.baseboard, [0, 0, 64, 16], ['ny']);
 
     /* ---- the window, from the inside: drapes and a valance ---- */
     panel(b, (WIN_L.x0 + WIN_L.x1) / 2, WIN_L.y0 - 0.04, IN + 0.01, WIN_L.x1 - WIN_L.x0, WIN_L.y1 - WIN_L.y0 + 0.08, 0, T.curtainDark);
     b.solid(WIN_L.x0 - 0.3, WIN_L.y0 - 0.25, IN, WIN_L.x0 - 0.02, WIN_L.y1 + 0.2, IN + 0.12, spread, [0, 0, 16, 64]);
-    b.solid(WIN_L.x1 + 0.02, WIN_L.y0 - 0.25, IN, WIN_L.x1 + 0.28, WIN_L.y1 + 0.2, IN + 0.12, spread, [0, 0, 16, 64]);
-    b.solid(WIN_L.x0 - 0.32, WIN_L.y1 + 0.1, IN, WIN_L.x1 + 0.3, WIN_L.y1 + 0.34, IN + 0.16, spread, [0, 0, 64, 16]);
+    b.solid(WIN_L.x1 + 0.02, WIN_L.y0 - 0.25, IN, WIN_L.x1 + 0.2, WIN_L.y1 + 0.2, IN + 0.12, spread, [0, 0, 16, 64]);
+    b.solid(WIN_L.x0 - 0.32, WIN_L.y1 + 0.1, IN, WIN_L.x1 + 0.22, WIN_L.y1 + 0.34, IN + 0.16, spread, [0, 0, 64, 16]);
 
     /* ---- the air unit under the window ---- */
     b.box(1.95, 0.25, IN, 2.95, 0.85, 0.42, {
@@ -107,97 +126,97 @@ export function buildRoomInterior(T, room) {
       pz: { tex: T.acFront, uv: [0, 0, 64, 32] }, nz: null,
     });
 
-    /* ---- beds ---- */
-    const bed = (x0, z0, x1, z1) => {
+    /* ---- beds, across the room, headboards on the right-hand wall ---- */
+    const bed = (z0, z1) => {
+      const x0 = BED_X0, x1 = BED_X1;
       b.solid(x0, 0, z0, x1, 0.3, z1, T.wood, [0, 0, 64, 16], ['ny']);
       b.box(x0 - 0.02, 0.3, z0 - 0.02, x1, 0.58, z1 + 0.02, {
         all: { tex: spread, uv: [0, 0, 64, 20] },
         py: { tex: spread, uv: [0, 0, 64, 64] }, ny: null, px: null,
       });
-      // pillows up by the headboard, under a fold of spread
-      const zc = (z0 + z1) / 2, half = (z1 - z0) / 2;
-      const pw = half > 0.8 ? 0.8 : half - 0.05;
+      // two pillows up by the headboard
+      const zc = (z0 + z1) / 2, pw = Math.min(0.7, (z1 - z0) / 2 - 0.08);
       b.solid(x1 - 0.5, 0.58, zc - pw - 0.02, x1 - 0.06, 0.7, zc - 0.04, T.pillow, [0, 0, 32, 16], ['ny']);
       b.solid(x1 - 0.5, 0.58, zc + 0.04, x1 - 0.06, 0.7, zc + pw + 0.02, T.pillow, [0, 0, 32, 16], ['ny']);
       // headboard bolted to the wall
-      b.box(x1, 0.3, z0 - 0.08, SX1, 1.2, z1 + 0.08, { all: { tex: T.headboard, uv: [0, 0, 64, 32] }, px: null });
+      b.box(x1, 0.3, z0 - 0.06, SX1, 1.15, z1 + 0.06, { all: { tex: T.headboard, uv: [0, 0, 64, 32] }, px: null });
     };
-    let lamps;
-    if (room.beds === 'K') {
-      bed(1.45, 2.05, 3.49, 4.15);
-      lamps = [1.7, 4.5];
-    } else if (room.beds === 'QQ') {
-      bed(1.46, 0.85, 3.49, 2.4); bed(1.46, 3.2, 3.49, 4.75);
-      lamps = [2.8];
-    } else {
-      bed(1.59, 2.3, 3.49, 3.67);
-      lamps = [1.95, 4.05];
-    }
+    for (const [z0, z1] of plan.beds) bed(z0, z1);
+
     /* ---- nightstands and their lamps ---- */
-    for (const z of lamps) {
+    for (const z of plan.stands) {
       b.solid(3.02, 0, z - 0.27, SX1, 0.58, z + 0.27, T.wood, [0, 0, 32, 32], ['ny']);
       b.solid(3.2, 0.58, z - 0.05, 3.3, 0.96, z + 0.05, T.lampBase, [0, 0, 16, 16]);
       b.box(3.08, 0.96, z - 0.17, 3.42, 1.24, z + 0.17, { all: { tex: T.lampShade, uv: [0, 0, 16, 16], flags: F_EMIT }, ny: null });
     }
-    // the phone on the first stand, and an ashtray or a no-smoking card
-    const z0 = lamps[0];
-    b.box(3.05, 0.58, z0 + 0.1, 3.22, 0.66, z0 + 0.25, { all: { tex: T.phoneRoom, uv: [0, 0, 16, 16] } });
+    // the phone on the first stand, and an ashtray on smoking rooms'
+    const z0 = plan.stands[0];
+    b.box(3.05, 0.58, z0 + 0.08, 3.22, 0.66, z0 + 0.23, { all: { tex: T.phoneRoom, uv: [0, 0, 16, 16] } });
     if (room.smoking) b.solid(3.06, 0.58, z0 - 0.24, 3.18, 0.61, z0 - 0.12, T.ashtray, [0, 0, 16, 16]);
 
-    /* ---- dresser and the television ---- */
-    b.box(SX0, 0, 2.3, 0.58, 0.76, 3.9, {
+    /* ---- dresser, television, and the mirror over it ---- */
+    b.box(SX0, 0, 2.2, 0.56, 0.76, 3.8, {
       all: { tex: T.wood, uv: [0, 0, 64, 32] },
       px: { tex: T.tvWood, uv: [0, 0, 32, 32] }, ny: null, nx: null,
     });
-    b.box(0.1, 0.76, 2.85, 0.58, 1.2, 3.35, {
+    b.box(0.1, 0.76, 2.75, 0.56, 1.2, 3.25, {
       all: { tex: T.tvShell, uv: [0, 0, 32, 32] },
       px: { tex: T.tvScreenRoom, uv: [0, 0, 32, 32] },
     });
-    b.solid(0.25, 1.2, 3.05, 0.3, 1.34, 3.08, T.chrome, [0, 0, 8, 8]);     // rabbit ears
-    b.solid(0.25, 1.2, 3.12, 0.3, 1.32, 3.15, T.chrome, [0, 0, 8, 8]);
-    if (!room.smoking) b.box(0.12, 0.76, 2.45, 0.2, 0.88, 2.6, { all: { tex: T.noSmoking, uv: [0, 0, 16, 16] } });
-    // the ice bucket on the dresser, where it always is
-    b.solid(0.25, 0.76, 3.55, 0.45, 0.94, 3.75, T.iceBucket, [0, 0, 16, 16], ['ny']);
+    b.solid(0.25, 1.2, 2.95, 0.3, 1.34, 2.98, T.chrome, [0, 0, 8, 8]);     // rabbit ears
+    b.solid(0.25, 1.2, 3.02, 0.3, 1.32, 3.05, T.chrome, [0, 0, 8, 8]);
+    if (!room.smoking) b.box(0.12, 0.76, 2.35, 0.2, 0.88, 2.5, { all: { tex: T.noSmoking, uv: [0, 0, 16, 16] } });
+    b.solid(0.22, 0.76, 3.45, 0.42, 0.94, 3.65, T.iceBucket, [0, 0, 16, 16], ['ny']);
+    // framed art over the dresser, flat on the wall
+    b.solid(SX0, 1.42, 2.55, SX0 + 0.03, 2.0, 3.45, T.doorFrame, [0, 0, 32, 16]);
+    panel(b, SX0 + 0.035, 1.46, 3.0, 0.82, 0.5, Math.PI / 2, T.art[(k >>> 9) % T.art.length]);
     // luggage rack by the door
-    b.solid(SX0 + 0.02, 0.44, 1.2, 0.62, 0.5, 1.8, T.wood, [0, 0, 32, 8]);
-    b.solid(SX0 + 0.05, 0, 1.25, 0.1, 0.44, 1.3, T.chrome, [0, 0, 8, 8]);
-    b.solid(0.54, 0, 1.7, 0.59, 0.44, 1.75, T.chrome, [0, 0, 8, 8]);
-    // table and chair by the window, where there is room for one
-    if (room.beds !== 'QQ') {
-      b.solid(3.1, 0, 0.84, 3.16, 0.7, 0.9, T.chrome, [0, 0, 8, 8]);
-      b.solid(2.85, 0.7, 0.62, 3.4, 0.74, 1.14, T.formica, [0, 0, 32, 32]);
-      b.solid(2.3, 0.42, 0.7, 2.72, 0.48, 1.1, T.vinylOrange, [0, 0, 32, 32]);
-      b.solid(2.3, 0.48, 0.66, 2.72, 0.95, 0.72, T.vinylOrange, [0, 0, 32, 32]);
-      b.solid(2.48, 0, 0.88, 2.54, 0.42, 0.94, T.chrome, [0, 0, 8, 8]);
+    b.solid(SX0 + 0.02, 0.44, 1.0, 0.62, 0.5, 1.6, T.wood, [0, 0, 32, 8]);
+    b.solid(SX0 + 0.05, 0, 1.05, 0.1, 0.44, 1.1, T.chrome, [0, 0, 8, 8]);
+    b.solid(0.54, 0, 1.5, 0.59, 0.44, 1.55, T.chrome, [0, 0, 8, 8]);
+    // a little table and a chair by the window, where the beds leave room
+    if (plan.table) {
+      b.solid(3.17, 0, 0.62, 3.23, 0.7, 0.68, T.chrome, [0, 0, 8, 8]);
+      b.solid(2.95, 0.7, 0.45, 3.45, 0.74, 0.85, T.formica, [0, 0, 32, 32]);
+      b.solid(2.45, 0.42, 0.5, 2.85, 0.48, 0.9, T.vinylOrange, [0, 0, 32, 32]);
+      b.solid(2.45, 0.48, 0.86, 2.85, 0.92, 0.9, T.vinylOrange, [0, 0, 32, 32]);
+      b.solid(2.62, 0, 0.68, 2.68, 0.42, 0.74, T.chrome, [0, 0, 8, 8]);
     }
-    /* ---- art: over the beds, and over the dresser ---- */
-    panel(b, SX1 - 0.02, 1.42, lamps.length === 1 ? 2.8 : 3.1, 1.0, 0.5, -Math.PI / 2, art);
-    panel(b, SX0 + 0.02, 1.45, 3.1, 0.9, 0.62, Math.PI / 2, T.mirror);
+    /* ---- art over the beds ---- */
+    for (const [z0b, z1b] of plan.beds) panel(b, SX1 - 0.02, 1.38, (z0b + z1b) / 2, 0.9, 0.46, -Math.PI / 2, art);
 
-    /* ---- the bathroom ---- */
-    b.box(SX0, 0, 5.12, 0.8, 0.5, BZ, {
-      all: { tex: T.porcelain, uv: [0, 0, 32, 32] },
-      py: { tex: T.tubInner, uv: [0, 0, 32, 32] }, ny: null,
-    });
-    sign(b, 0.82, 0.55, (5.12 + BZ) / 2, BZ - 5.12, 1.5, Math.PI / 2, T.showerCurtain);
-    b.solid(1.38, 0, 6.55, 1.72, 0.4, 6.98, T.porcelain, [0, 0, 32, 32], ['ny']);
-    b.solid(1.35, 0.4, 6.98, 1.75, 0.8, BZ, T.porcelain, [0, 0, 32, 32], ['ny']);
-    b.solid(1.36, 0.4, 6.55, 1.74, 0.43, 6.98, T.white, [0, 0, 16, 16], ['ny']);
-    // roll of paper on the wall by it
-    b.solid(1.05, 0.62, 6.9, 1.12, 0.72, 7.02, T.white, [0, 0, 16, 16]);
-    b.box(1.0, 2.5, 5.9, 1.3, 2.58, 6.2, { all: { tex: T.lightPanel, uv: [0, 0, 64, 64], flags: F_EMIT }, py: null });
-
-    /* ---- the vanity, out in its alcove ---- */
-    b.box(2.08, 0, 6.55, SX1, 0.84, BZ, {
+    /* ---- the sink nook: counter across the back, mirror, two lights ---- */
+    b.box(SX0, 0, 6.58, BX, 0.84, BZ, {
       all: { tex: T.wood, uv: [0, 0, 64, 32] },
       py: { tex: T.vanityTop, uv: [0, 0, 32, 32] }, pz: null, ny: null,
     });
-    panel(b, (2.08 + SX1) / 2, 1.05, BZ - 0.01, 1.2, 0.8, Math.PI, T.mirror);
-    b.box(2.4, 1.9, BZ - 0.06, 3.2, 1.98, BZ, { all: { tex: T.lightPanel, uv: [0, 0, 64, 16], flags: F_EMIT } });
-    panel(b, SX1 - 0.01, 0.9, 5.55, 0.42, 0.62, -Math.PI / 2, T.towel);
-    // a wire rack with the spare towels over the tub end
-    b.solid(2.1, 1.75, 5.1, SX1 - 0.02, 1.78, 5.45, T.chrome, [0, 0, 8, 8]);
-    b.solid(2.2, 1.78, 5.12, 2.8, 1.9, 5.42, T.towel, [0, 0, 16, 32]);
+    b.solid(SX0, 0.84, BZ - 0.08, BX, 0.95, BZ, T.vanityTop, [0, 0, 32, 8]);   // backsplash
+    const mc = (SX0 + BX) / 2;
+    b.solid(mc - 0.66, 1.0, BZ - 0.025, mc + 0.66, 1.9, BZ, T.doorFrame, [0, 0, 32, 32]);
+    panel(b, mc, 1.04, BZ - 0.03, 1.24, 0.82, Math.PI, T.mirror);
+    for (const x of [mc - 0.8, mc + 0.8]) {
+      b.solid(x - 0.05, 1.62, BZ - 0.06, x + 0.05, 1.66, BZ, T.chrome, [0, 0, 8, 8]);
+      b.box(x - 0.07, 1.66, BZ - 0.14, x + 0.07, 1.84, BZ - 0.02, { all: { tex: T.lampShade, uv: [0, 0, 16, 16], flags: F_EMIT } });
+    }
+    // a hand towel on a ring on the aisle wall, and the light overhead
+    panel(b, SX0 + 0.02, 0.95, 6.15, 0.36, 0.5, Math.PI / 2, T.towel);
+    b.box(0.7, H - 0.04, 5.5, 1.3, H - 0.01, 6.1, { all: { tex: T.lightPanel, uv: [0, 0, 64, 64], flags: F_EMIT }, py: null });
+
+    /* ---- the bathroom: tub across the back, the toilet on the side wall ---- */
+    b.box(BX + 0.08, 0, 6.4, SX1, 0.5, BZ, {
+      all: { tex: T.porcelain, uv: [0, 0, 32, 32] },
+      py: { tex: T.tubInner, uv: [0, 0, 32, 32] }, ny: null, pz: null, px: null,
+    });
+    sign(b, (BX + 0.08 + SX1) / 2, 0.55, 6.37, SX1 - BX - 0.08, 1.5, 0, T.showerCurtain);
+    b.solid(BX + 0.08, 2.05, 6.36, SX1, 2.07, 6.38, T.chrome, [0, 0, 8, 8]);   // the curtain rod, wall to wall
+    // toilet: tank against the wall, bowl facing into the room
+    b.solid(3.34, 0.4, 5.2, SX1, 0.8, 5.62, T.porcelain, [0, 0, 32, 32], ['ny']);
+    b.solid(3.12, 0, 5.24, 3.46, 0.4, 5.58, T.porcelain, [0, 0, 32, 32], ['ny']);
+    b.solid(3.12, 0.4, 5.23, 3.36, 0.43, 5.59, T.white, [0, 0, 16, 16], ['ny']);
+    b.solid(SX1 - 0.04, 0.62, 5.8, SX1, 0.72, 5.94, T.white, [0, 0, 16, 16]);   // paper on its holder
+    // bath towels on the wall by the door, and the bathroom light
+    panel(b, (BX + SX1) / 2, 0.9, BACK_Z + 0.09, 0.5, 0.62, 0, T.towel);
+    b.box(2.45, H - 0.04, 5.4, 3.05, H - 0.01, 6.0, { all: { tex: T.lightPanel, uv: [0, 0, 64, 64], flags: F_EMIT }, py: null });
   }, mw);
 
   return mb.build();

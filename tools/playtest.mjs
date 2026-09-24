@@ -112,13 +112,13 @@ st = await state();
 if (st.dlg) { const i = st.dlg.choices.findIndex((c) => /key/i.test(c)); if (i >= 0) { await key(`Digit${i + 1}`); await wait(200); } }
 const afterPay = await ev((id) => window.__game.shift.npcs.find(id).ci.stage, guest.id);
 check(`[${round}] ` + 'paid; now the key', afterPay === 'key', afterPay);
-if ((await state()).mode === 'talk') { await key('KeyE'); await wait(200); }
+if ((await state()).mode === 'talk') { await key('Digit1'); await wait(250); }
 
 // the rack, behind the stool
 await aim(2.1, 1.55, -6.95);
 await wait(250);
 st = await state();
-check(`[${round}] ` + 'looking at the key rack', /Key rack/.test(st.prompt), st.prompt);
+check(`[${round}] ` + 'looking at the key rack', /Key rack/.test(st.prompt), `${st.prompt} | mode=${st.mode} | ${JSON.stringify(await ev(() => { const p = window.__game.player; return { x: p.x.toFixed(2), z: p.z.toFixed(2), sit: p.sitting, ring: window.__game.shift.phone.ringing().length }; }))} ${st.dlg ? st.dlg.text : ''}`);
 await key('KeyE'); await wait(300);
 check(`[${round}] ` + 'key rack open', (await state()).mode === 'board');
 await key('KeyE'); await wait(200);

@@ -55,8 +55,9 @@ against the binder) → the key off the rack behind you → across the counter.
   Mercers and their house, Mr. Wexler and the sign, Tammy from Peg's Diner across the road,
   weekly residents, and people you will tell somebody about: nine pillows, a storm chaser, a
   magician, a woman traveling with her husband's ashes, the last encyclopedia salesman.
-- Groups: the paving crew on weeknights, a twelve-and-under travel team on Friday, a tour bus
-  on Saturday.
+- A quiet first night: five check-ins, a couple of calls and requests, one guest you will
+  remember. It gets busier from there, a guest at a time.
+- Groups from the second night: the paving crew, a twelve-and-under travel team, a tour bus.
 - The phone: towels, remotes, wrong numbers, somebody's sister, somebody's mother-in-law, a
   man who would like a large pepperoni.
 - Breakfast from six: the Deluxe Continental, which means two kinds of muffin.
@@ -85,7 +86,7 @@ The tools drive the real game in the pre-installed headless Chromium:
 ```sh
 npm run check                      # boot + a simulated hour, then four check-ins by keyboard
 node tools/autopilot.mjs           # a clerk plays a whole shift through the game's systems
-node tools/autopilot.mjs --shifts=3            # Thursday, Friday (ball team), Saturday (bus)
+node tools/autopilot.mjs --shifts=4            # the quiet first night, then crew, ball team, bus
 node tools/autopilot.mjs --sloppy              # wrong keys, missed wake-ups: see the audit
 node tools/uishots.mjs             # screenshots of the note, desk, dialogue, terminal, rack, phone
 ```

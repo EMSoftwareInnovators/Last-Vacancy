@@ -243,10 +243,16 @@ export const OUTSIDE_CALLS = [
       const earl = s.npcs.find('EARL');
       const earlIn = earl && earl.room;
       const crew = s.ledger.folios.filter((f) => f.account === 'TRIPARISH').length;
+      const crewTonight = s.director.reservations.some((r) => r.id === 'BUDDY');
+      const ask = crewTonight ? (crew ? 'The paving boys got in?' : 'Did the Tri-Parish boys show up yet?') : 'Earl get in all right?';
+      const answer = crewTonight ? (crew ? `They're in -- ${crew} rooms, downstairs.` : 'Not yet.') : (earlIn ? `He's in ${earl.room}.` : 'Not yet.');
+      const after = crewTonight
+        ? `${crew ? 'Good. They\'re good boys. They leave the rooms like a hurricane went through politely.' : 'They will. Buddy called me from Opelousas at six, which means seven-thirty.'} ${earlIn ? `Earl's in ${earl.room === '105' ? '105, good' : `${earl.room}? He'll live`}.` : ''}`
+        : (earlIn ? (earl.room === '105' ? 'In 105. Good. Then the hard part of your night is over and you didn\'t even know it.' : `${earl.room}. Well. He'll live. He'll tell me about it, and he'll live.`) : 'He will. Earl always comes. Give him 105 or he\'ll talk about it until Christmas.');
       return {
         from: 'outside', who,
-        script: () => say(who, `It's June. I'm not checking on you. I'm checking on the motel. ${crew ? 'The paving boys got in?' : 'Did the Tri-Parish boys show up yet?'}`, [
-          reply(crew ? `They're in -- ${crew} rooms, downstairs.` : 'Not yet.', () => say(who, `${crew ? 'Good. They\'re good boys. They leave the rooms like a hurricane went through politely.' : 'They will. Buddy called me from Opelousas at six, which means seven-thirty.'} ${earlIn ? `Earl's in ${earl.room === '105' ? '105, good' : `${earl.room}? He'll live`}.` : 'And Earl\'s coming. Earl always comes. Give him 105 or he\'ll talk about it until Christmas.'}`, [
+        script: () => say(who, `It's June. I'm not checking on you. I'm checking on the motel. ${ask}`, [
+          reply(answer, () => say(who, after, [
             reply('Anything else?', () => say(who, 'The coffee maker on the left runs hot. Don\'t let the waffle iron alone with anybody under twelve. And if anybody asks about 213 --', [
               reply('It\'s a number.', () => { s.flags.juneImpressed = true; return say(who, 'It\'s a number. People need to get over it. Good night.', [reply('Good night, June.', end)]); }),
               reply('What about 213?', () => say(who, 'Nothing about 213. That\'s my point. It\'s a number. People need to get over it. Good night.', [reply('Good night, June.', end)])),

@@ -231,8 +231,14 @@ export class Sound {
     const ind = this.listener.indoor;
     const hum = this.muted ? 0 : 0.028 * ind * this.lightLevel();
     if (Math.abs(hum - (this._humSent || 0)) > 0.0006) { this._humSent = hum; this.humGain.gain.setTargetAtTime(hum, t, 0.2); }
-    const air = this.muted ? 0 : 0.03 * (1 - ind * 0.85);
+    /* The hiss beds sit under everything in the building and out in the lot.
+       On the title there is nothing on top of them, so there they are off:
+       the title is crickets, the sign, and the highway a long way off. */
+    const title = this.scene === 'title';
+    const air = this.muted || title ? 0 : 0.012 * (1 - ind * 0.85);
     if (Math.abs(air - (this._airSent || 0)) > 0.0006) { this._airSent = air; this.airGain.gain.setTargetAtTime(air, t, 0.25); }
+    const room = this.muted || title ? 0 : 0.008 + 0.02 * ind;
+    if (Math.abs(room - (this._roomSent === undefined ? 0.04 : this._roomSent)) > 0.0006) { this._roomSent = room; this.roomGain.gain.setTargetAtTime(room, t, 0.3); }
     // crickets at night, birds when it gets light, both only really outside
     this._critT = (this._critT || 0) - dt;
     if (this._critT <= 0) {
@@ -242,6 +248,9 @@ export class Sound {
       if (dawn > 0.25 && Math.random() < dawn * 0.35) this.bird(out * dawn * 0.6);
     }
   }
+
+  /** 'title' or 'play': the title screen gets a quieter bed. */
+  setScene(sc) { this.scene = sc; }
 
   lightLevel() { return this._lights === undefined ? 1 : this._lights; }
   setLights(v) { this._lights = v; }

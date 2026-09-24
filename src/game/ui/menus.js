@@ -118,17 +118,17 @@ export function howToHtml() {
   </div>
   <div class="cols">
     <ul>
-      <li><b>Check-ins.</b> Talk to the guest: name, how many, how long, smoking, beds, how they are paying. Then the terminal: ${'F1'} CHECK-IN (or 1), ENTER to post. Take the money, pull the key off the rack behind you, and hand it across.</li>
-      <li><b>The rack</b> has a tab over every hook: CLEAN, DIRTY, OCC, RSVD. Taking a key for a room you just sold flips it to OCC; everything else you flip yourself (${glyphText('drop')} on the rack). Luz cleans by the rack.</li>
-      <li><b>Money.</b> Cash goes to the register, and the change comes back out of it into your hand. Cards: check the date, imprint (hold ${glyphText('interact')}), they sign. Vouchers: the binder lists who we bill. Coupons have rules printed on them.</li>
-      <li><b>The phone.</b> Two lines. ${'HOLD'} appears when another line rings or somebody is at the desk. Never give out a room number: put the call through, or take a message.</li>
+      <li><b>Check-ins.</b> Ask the guest what you need (name, how many, how long, smoking, beds, payment). Terminal: ${'F1'} (or 1), ENTER to post. Take the money, get the key off the rack behind you, hand it over.</li>
+      <li><b>Money.</b> Cash: ring it up at the register, give back the change. Cards: check the date, imprint (hold ${glyphText('interact')}), they sign. Vouchers: the binder lists who we bill.</li>
+      <li><b>The rack.</b> Tabs say CLEAN, DIRTY, OCC, RSVD. After a checkout, hang the key and flip the tab (${glyphText('drop')}).</li>
+      <li><b>The phone.</b> Two lines. Never give out a room number: put the call through, or take a message.</li>
     </ul>
     <ul>
-      <li><b>Requests</b> go on your notepad (${glyphText('notes')}). Linen and supplies are in the back office; plungers and breakers in maintenance, north end.</li>
-      <li><b>Wake-up calls</b> go on the sheet by the phone. When one is due, pick up the phone and call the room.</li>
-      <li><b>Night audit</b> at three: ${'F5'}. It checks the drawer, the card slips, the vouchers and the rack against the system.</li>
-      <li><b>Breakfast</b> is yours from half past four: coffee packs, trays and waffle mix in the pantry; juice and milk in its fridge. The papers land out front around five.</li>
-      <li><b>Full?</b> The NO VACANCY switch is by the rack. <b>Quiet?</b> Sit on the stool (${glyphText('wait')}) and the night goes faster until something needs you.</li>
+      <li><b>Requests</b> go on your notepad (${glyphText('notes')}). Linen and supplies are in the back office.</li>
+      <li><b>Wake-ups</b> go on the sheet by the phone. When one is due, pick up the phone and call the room.</li>
+      <li><b>Night audit</b> at three: ${'F5'}.</li>
+      <li><b>Breakfast</b> from half past four: the pantry has coffee, trays and waffle mix; its fridge has juice and milk.</li>
+      <li><b>Quiet?</b> Sit on the stool (${glyphText('wait')}) and the night goes faster.</li>
     </ul>
   </div>
   <p class="pad-foot">${glyph('back')} back</p></div>`;

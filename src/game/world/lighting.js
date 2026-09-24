@@ -88,11 +88,11 @@ export function roomLights(r) {
   const out = [];
   const add = (lx, ly, lz, rad, i) => { const [x, z] = toWorld(r, lx, lz); out.push(L(x, r.y + ly, z, rad, i)); };
   const m = (lx) => (r.doorHi ? ROOM_W - lx : lx);
-  add(m(3.3), 1.2, 1.9, 4.4, 0.75);
-  add(m(3.3), 1.2, 4.6, 4.4, 0.6);
-  add(m(1.2), 2.4, 3.0, 5.5, 0.35);
-  add(m(2.8), 2.2, 6.0, 3.6, 0.7);
-  add(m(1.0), 2.3, 6.1, 3.0, 0.6);
+  const stands = r.beds === 'QQ' ? [2.57] : r.beds === 'K' ? [1.22, 3.88] : [1.52, 3.58];
+  for (const z of stands) add(m(3.25), 1.2, z, 4.6, stands.length === 1 ? 0.85 : 0.65);
+  add(m(1.1), 2.4, 3.0, 5.5, 0.35);
+  add(m(2.75), 2.3, 5.7, 3.4, 0.75);          // the bathroom
+  add(m(1.0), 2.2, 6.3, 3.4, 0.7);            // the sink nook
   return out;
 }
 export function roomLight(r) {

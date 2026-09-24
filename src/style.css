@@ -178,7 +178,7 @@ body.talking #subtitles{bottom:31cqw}
 /* ---------------- PADS (notes/phone/panel) ---------------- */
 .pad{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:78cqw;max-height:88cqh;overflow:hidden;
+  width:78cqw;max-height:92cqh;overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;
   background:var(--paper);color:var(--ink);
   border:0.6cqw solid #2a2418;
   box-shadow:0 1.2cqw 0 rgba(0,0,0,.6);
@@ -362,3 +362,14 @@ body.cine #letterbox-top,body.cine #letterbox-bot{height:11cqh}
 .endwrap .sheet.note p{margin-bottom:.6cqw}
 #panel-body .endwrap table{font-size:1.7cqw}
 #panel-body .endwrap td{line-height:1.25;padding:.1cqw .3cqw}
+
+/* ---------------- menus that fit ---------------- */
+.pad .key{text-indent:0}
+#panel-body li.opt{font-size:2.2cqw;line-height:1.32}
+#panel-body h2{margin-bottom:.5cqw}
+#panel-body .pad-foot{margin-top:.6cqw;font-size:1.8cqw}
+body.panel-open #title .title-wrap,body.panel-open #title .copyright{visibility:hidden}
+#panel-body .howto .keys li{font-size:1.7cqw;line-height:1.2}
+#panel-body .howto .cols li{font-size:1.62cqw;line-height:1.22;margin-bottom:.3cqw}
+#panel-body .howto h2{font-size:2.2cqw}
+.pad:has(.howto){width:90cqw;padding:1.2cqw 2cqw}

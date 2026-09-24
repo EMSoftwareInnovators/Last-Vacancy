@@ -109,6 +109,7 @@ export class Shift {
   buildMeshes(T) {
     const mk = (fn) => { const b = new XBuilder(); b.light = () => 1; fn(b); return b.build(); };
     return {
+      lineLamp: mk((b) => b.solid(-0.009, 0, -0.007, 0.009, 0.006, 0.007, T.redLamp, [0, 0, 4, 4], null, F_EMIT)),
       vacancySwitch: mk((b) => {
         panel(b, 0, 0.3, 0, 0.34, 0.09, 0, T.vacancy, F_EMIT);
         b.solid(-0.05, 0.02, -0.02, 0.05, 0.2, 0.0, T.plasticBlack, [0, 0, 8, 8]);
@@ -464,7 +465,7 @@ export class Shift {
       [30, 58, 86].forEach((m, i) => D.after(m + this.rng() * 8, () => { if (!p.asleep && p.inRoom) s.incoming(pillowCall(s, p, i)); }, 'pillows'));
     }
     if (p.rosterId === 'URN') {
-      D.at(Math.max(this.clock.min + 30, at(23, 35) + this.rng() * 40), () => s.incoming(locatorCall(s, p, {
+      D.at(Math.max(this.clock.min + 30, at(23, 45) + this.rng() * 30), () => s.incoming(locatorCall(s, p, {
         opener: 'Hi -- I\'m sorry, it\'s so late. My mother\'s staying there, I think. Carol Haskins? She\'s driving to Arizona with my father\'s -- with my father. She won\'t answer the car phone. I just want to know she stopped.',
         message: 'Call Julie. She just wants to hear your voice.', pitch: 1.3,
       })), 'urn daughter');
@@ -968,8 +969,9 @@ export class Shift {
     if (d.kind !== 'room' || !d.room) return d.target ? 'Close the door' : 'Open the door';
     const r = ROOM_BY_NO[d.room];
     const inside = this.g.playerRoom === r;
-    if (inside) return d.target ? 'Close the door' : 'Open the door';
-    if (d.target) return null;
+    // an open door closes from either side; a guest standing in it is talking to you, not the door
+    if (d.target) return this.npcs.list.some((p) => p.atDoor && p.room === d.room) ? null : `Close ${d.room}'s door`;
+    if (inside) return 'Open the door';
     const occ = this.occupant(d.room);
     const task = this.tasks.forRoom(d.room);
     if (occ) return `Knock on ${d.room}${task ? ` -- ${task.text.split(' --')[0].toLowerCase()}` : ''}`;
@@ -982,6 +984,11 @@ export class Shift {
   }
   useDoor(d) {
     const doors = this.g.doors;
+    if (d.kind === 'room' && d.room && d.target) {
+      d.stay = false; doors.close(d); this.g.sound.doorClose(0, 0.7);
+      if (this.g.playerRoom !== ROOM_BY_NO[d.room]) this.g.sound.lockClick(true);
+      return;
+    }
     if (d.kind !== 'room' || !d.room || this.g.playerRoom === ROOM_BY_NO[d.room]) {
       if (d.target) { d.stay = false; doors.close(d); this.g.sound.doorClose(0, 0.7); }
       else { d.stay = true; doors.open(d, 99); this.g.sound.doorOpen(0, 0.7); }
@@ -996,7 +1003,8 @@ export class Shift {
     }
     if (task && task.kind === 'message') { this.tasks.complete(task); this.g.sound.paper(); return; }
     this.g.sound.lockClick(false);
-    doors.open(d, 6);
+    d.stay = true;                  // it stays open until you close it
+    doors.open(d, 99);
     this.g.sound.doorOpen(0, 0.8);
   }
   answerDoor(d, p, task) {
@@ -1194,6 +1202,14 @@ export class Shift {
     this.breakfast.draw(draws);
     if (!this.mopOut && M.mop) draws.push({ mesh: M.mop, x: MOP_HOME.x, y: 0, z: MOP_HOME.z, yaw: 0.6, r: 0.8 });
     draws.push({ mesh: this.meshes.vacancySwitch, x: 4.37, y: 1.2, z: -6.93, yaw: 0, r: 0.5, shade: 1 });
+    // the line buttons on the desk phone: flashing while it rings, steady on hold
+    const ph = DESK_PROPS.phone, blink = Math.floor(g.time * 4) % 2 === 0;
+    for (const l of this.phone.lines) {
+      const c = l.call;
+      if (!c || (c.state === 'ringing' && !blink)) continue;
+      const lx = ph.x0 + 0.17 + (l.n - 1) * 0.07;
+      draws.push({ mesh: this.meshes.lineLamp, x: lx, y: ph.y0 + 0.07, z: ph.z1 - 0.05, yaw: 0, r: 0.1, shade: 1 });
+    }
     for (const f of this.floorItems) {
       const mesh = M[f.item.mesh] || M.box;
       draws.push({ mesh, x: f.x, y: (f.y || 0) + 0.02, z: f.z, yaw: f.item.id * 1.7, r: 0.5, lv: f.lv });

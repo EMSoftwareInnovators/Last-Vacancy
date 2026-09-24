@@ -253,7 +253,7 @@ export const enterRoom = () => ({
       s.enteredRoom(p);
       return false;
     }
-    return n.approach(p, r.center.x + 0.3, r.center.z - 0.3, dt);
+    return n.approach(p, r.center.x, r.center.z, dt);
   },
 });
 /** In the room: somewhere to sit, lights and television as the evening goes. */

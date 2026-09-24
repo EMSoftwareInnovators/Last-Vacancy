@@ -18,7 +18,7 @@ export function firstNote() {
   return [
     'Welcome to nights.',
     'Seven to seven. The rack is behind you, the system is the green one, the imprinter sticks -- lean on it. Cash in the register gets rung up, not put in your shirt pocket, I don\'t care how busy it gets.',
-    'Tonight: Tri-Parish Paving has four rooms (voucher, direct bill, they\'re in the binder). Earl Maddox is Thursday -- 105 -- and if you give him anything else you will hear about it. Mr. Wexler in 205 is on night two of three. He is going to mention the sign. I know about the sign.',
+    'Tonight is a quiet one, which is why it is your first. Earl Maddox is Thursday -- 105, it is blocked for him -- and if you give him anything else you will hear about it. Hollis in 102 pays the week tonight, cash. Mr. Wexler in 205 is on night two of three. He is going to mention the sign. I know about the sign.',
     'Wake-ups go on the sheet by the phone and you CALL them. Audit runs at three. Papers come at five. Coffee on by a quarter to six, breakfast out at six, and nobody under twelve touches the waffle iron alone.',
     'Somebody will ask if we\'d renumber 213. It\'s a number. People need to get over it.',
   ];

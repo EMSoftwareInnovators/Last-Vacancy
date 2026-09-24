@@ -19,7 +19,7 @@ import { makeRng } from '../../engine/mathx.js';
 import { PERSON, appFor, crewMember, fixedApp, CHILD_HEIGHT } from '../content/people.js';
 import { GROUPS } from '../content/groups.js';
 import { randomAppearance, randomName, MARKS, CARRY } from '../appearance.js';
-import { rollTraveler, pickArchetype } from '../content/travelers.js';
+import { rollTraveler, pickArchetype, ARCHETYPES } from '../content/travelers.js';
 import { createPerson, walkTo, idle, run, until, getInCar, getOutOfCar, drive, enterRoom, inRoom, exitRoom, toDesk, follow, iceRun, vendRun, porch, breakfastVisit, walkOff } from './npcs.js';
 import { SPOTS, ROOM_BY_NO, DRIVE, STALLS, DESK_PROPS, NEWS_DROP } from '../world/layout.js';
 import { Clock } from './clock.js';
@@ -56,7 +56,13 @@ export class Director {
     const s = this.s, rng = s.rng;
     const shiftNo = s.memory.shiftNo;
     const weekday = s.clock.weekday();
-    this.variant = { weekday, shiftNo };
+    /* How much happens tonight. The first night is short and plain: a regular
+       with a reservation, a walk-in who pays cash, a family, one guest you will
+       remember, and a trucker at one in the morning. It gets busier from there,
+       but never all at once. */
+    const load = shiftNo === 1 ? 'first' : shiftNo === 2 ? 'light' : 'normal';
+    this.load = load;
+    this.variant = { weekday, shiftNo, load };
 
     this.setupRooms();
     this.setupInHouse();
@@ -64,9 +70,15 @@ export class Director {
     /* ---- tonight's reservations ---- */
     const earl = weekday === 4;                   // Earl is Thursdays
     if (earl) this.reserve({ id: 'EARL', name: 'Earl Maddox', nights: 1, beds: 'K', gtd: true, room: '105', rateCode: 'RACK', note: 'REGULAR -- 105' });
-    // the group: a crew on weeknights, a ball team Friday, a tour bus Saturday
+    // the group: none the first night; then the paving crew, the ball team, the
+    // tour bus; after that, by the calendar
     const crewHere = !!s.memory.d.crew;
-    const group = weekday === 5 ? 'TEAM' : weekday === 6 ? 'BUS' : weekday >= 1 && weekday <= 4 && !crewHere ? 'CREW' : null;
+    let group;
+    if (shiftNo === 1) group = null;
+    else if (shiftNo === 2) group = crewHere ? null : 'CREW';
+    else if (shiftNo === 3) group = 'TEAM';
+    else if (shiftNo === 4) group = 'BUS';
+    else group = weekday === 5 ? 'TEAM' : weekday === 6 ? 'BUS' : weekday >= 1 && weekday <= 4 && !crewHere ? 'CREW' : null;
     this.variant.group = group;
     if (group === 'CREW') this.reserve({ id: 'BUDDY', name: 'Tri-Parish Paving (Guidry)', group: true, rooms: 4, nights: 3, beds: 'D', note: 'VOUCHER. DOWNSTAIRS, TOGETHER, SMOKING OK' });
     if (group === 'TEAM' || group === 'BUS') { const G = GROUPS[group]; this.reserve({ id: G.leader.id, name: G.title, group: true, rooms: G.rooms, nights: G.nights, beds: G.beds, note: G.note }); }
@@ -79,38 +91,48 @@ export class Director {
     /* ---- who is coming ---- */
     const here = new Set((s.memory.d.inHouse || []).map((h) => h.id));
     const plan = [];
-    if (group === 'CREW') plan.push({ id: 'BUDDY', arrive: [at(19, 12), at(19, 26)] });
-    if (group === 'TEAM' || group === 'BUS') this.at(this.rnd(GROUPS[group].arrive), () => this.arriveGroup(GROUPS[group]), `group ${group}`);
-    const bigGroup = group === 'TEAM' || group === 'BUS';
-    if (!here.has('CONNIE') && (shiftNo === 1 || (!bigGroup && rng.chance(0.5)))) plan.push({ id: 'CONNIE' });
-    if (earl) plan.push({ id: 'EARL' });
-    if (shiftNo === 1 || (!bigGroup && rng.chance(0.35))) plan.push({ id: 'PRUITT' });
-    if (!here.has('KYLE') && (shiftNo === 1 || rng.chance(0.4))) plan.push({ id: 'KYLE' });
-    // two of the ones people tell stories about, and one or two faces from across town
-    const seen = (id) => s.memory.known(id) && s.memory.guest(id).withYou > 0;
-    const oneoffPool = ['PILLOWS', 'STORM', 'MAGIC', 'URN', 'ENCYC'].filter((id) => !here.has(id));
-    // somebody you have not met yet, when there is anybody left you have not met
-    const fresh = oneoffPool.filter((id) => !seen(id));
-    const oneoffs = rng.sample(fresh.length >= 2 ? fresh : oneoffPool, shiftNo === 1 ? 2 : 1 + rng.int(2));
-    for (const id of oneoffs) plan.push({ id });
-    const lastNight = (id) => s.memory.known(id) && s.memory.guest(id).lastShift === shiftNo - 1;
-    const cameos = rng.sample(['VERNA', 'OTIS'].filter((id) => !here.has(id) && !lastNight(id)), shiftNo === 1 ? 1 + (rng.chance(0.5) ? 1 : 0) : rng.chance(0.5) ? 1 : 0);
-    for (const id of cameos) {
-      plan.push({ id });
-      if (id === 'VERNA') this.reserve({ id: 'VERNA', name: 'Verna Ashby', nights: 2, beds: 'K', gtd: false, room: '107', rateCode: 'AAA', note: 'AAA -- GROUND FL QUIET' });
-    }
-    plan.push({ id: 'LATENIGHT' });
-    // strangers
-    const nTrav = group === 'TEAM' ? 1 + rng.int(2) : group === 'BUS' ? 2 + rng.int(2) : 3 + rng.int(3);
-    const used = [];
-    for (let i = 0; i < nTrav; i++) {
-      const arch = pickArchetype(rng, used.filter((a) => a === 'hiding' || a === 'pastor'));
-      used.push(arch.id);
-      const t = rollTraveler(rng, arch);
-      plan.push({ def: t, arrive: [at(19, 30) + i * 55 + rng() * 20, at(19, 30) + i * 55 + 45 + rng() * 20] });
+    if (load === 'first') {
+      plan.push({ id: 'EARL', arrive: [at(19, 16), at(19, 24)] });
+      plan.push({ def: rollTraveler(rng, ARCHETYPES.find((a) => a.id === 'brokedown')), arrive: [at(20, 25), at(20, 40)] });
+      plan.push({ id: 'PRUITT', arrive: [at(21, 25), at(21, 40)] });
+      plan.push({ id: rng.pick(['URN', 'MAGIC']), arrive: [at(22, 40), at(23, 5)] });
+      plan.push({ id: 'LATENIGHT', arrive: [at(25, 15), at(25, 40)] });
+    } else {
+      if (group === 'CREW') plan.push({ id: 'BUDDY', arrive: [at(19, 12), at(19, 26)], big: true });
+      if (group === 'TEAM' || group === 'BUS') plan.push({ group: GROUPS[group], arrive: GROUPS[group].arrive, big: true });
+      const bigGroup = group === 'TEAM' || group === 'BUS';
+      if (earl) plan.push({ id: 'EARL' });
+      if (!bigGroup && !here.has('CONNIE') && rng.chance(0.4)) plan.push({ id: 'CONNIE' });
+      if (!bigGroup && rng.chance(0.3)) plan.push({ id: 'PRUITT' });
+      else if (!here.has('KYLE') && rng.chance(0.35)) plan.push({ id: 'KYLE' });
+      // one (sometimes two) of the ones people tell stories about; somebody new if there is anybody left
+      const seen = (id) => s.memory.known(id) && s.memory.guest(id).withYou > 0;
+      const oneoffPool = ['PILLOWS', 'STORM', 'MAGIC', 'URN', 'ENCYC'].filter((id) => !here.has(id));
+      const fresh = oneoffPool.filter((id) => !seen(id));
+      const oneoffs = rng.sample(fresh.length ? fresh : oneoffPool, load === 'light' || bigGroup ? 1 : 1 + (rng.chance(0.35) ? 1 : 0));
+      for (const id of oneoffs) plan.push({ id });
+      const lastNight = (id) => s.memory.known(id) && s.memory.guest(id).lastShift === shiftNo - 1;
+      const cameos = rng.sample(['VERNA', 'OTIS'].filter((id) => !here.has(id) && !lastNight(id)), rng.chance(0.5) ? 1 : 0);
+      for (const id of cameos) {
+        plan.push({ id });
+        if (id === 'VERNA') this.reserve({ id: 'VERNA', name: 'Verna Ashby', nights: 2, beds: 'K', gtd: false, room: '107', rateCode: 'AAA', note: 'AAA -- GROUND FL QUIET' });
+      }
+      plan.push({ id: 'LATENIGHT', arrive: [at(25, 0), at(26, 0)] });
+      // strangers
+      const nTrav = bigGroup ? rng.int(2) : load === 'light' ? 1 + rng.int(2) : 2 + rng.int(2);
+      const used = [];
+      for (let i = 0; i < nTrav; i++) {
+        const arch = pickArchetype(rng, used.filter((a) => a === 'hiding' || a === 'pastor'));
+        used.push(arch.id);
+        plan.push({ def: rollTraveler(rng, arch), arrive: [at(19, 40), at(24, 0)] });
+      }
     }
     this.plan = plan;
-    for (const e of plan) this.scheduleArrival(e);
+    this.spaceArrivals(plan);
+    for (const e of plan) {
+      if (e.group) this.at(e.at, () => this.arriveGroup(e.group), `group ${e.group.id}`);
+      else this.at(e.at, () => this.arrive(e.def || e.id), `arrive ${(e.def || PERSON[e.id]).name}`);
+    }
 
     /* ---- the rest of the night ---- */
     this.scheduleResidents();
@@ -118,6 +140,26 @@ export class Director {
     this.scheduleProblems();
     this.scheduleVisits();
     this.scheduleMorning();
+  }
+
+  /**
+   * Roll each arrival inside its window, then push them apart so there is time
+   * to finish one guest before the next one is at the counter: longer after a
+   * group, longer on the first nights.
+   */
+  spaceArrivals(plan) {
+    for (const e of plan) {
+      const d = e.def || (e.id && PERSON[e.id]);
+      const win = e.arrive || (d && d.schedule && d.schedule.arrive) || [at(20, 0), at(23, 0)];
+      e.at = this.rnd(win);
+    }
+    plan.sort((a, b) => a.at - b.at);
+    const gap = this.load === 'first' ? 45 : this.load === 'light' ? 35 : 28;
+    for (let i = 1; i < plan.length; i++) {
+      const prev = plan[i - 1];
+      const need = prev.at + (prev.big ? gap + 30 : gap) + this.s.rng() * 10;
+      if (plan[i].at < need) plan[i].at = need;
+    }
   }
 
   /** Room states at seven o'clock: what the day desk left you. */
@@ -211,14 +253,6 @@ export class Director {
   }
 
   /* ---------------- arriving ---------------- */
-  scheduleArrival(e) {
-    const s = this.s;
-    const d = e.def || PERSON[e.id];
-    const win = e.arrive || (d.schedule && d.schedule.arrive) || [at(20, 0), at(23, 0)];
-    const t = this.rnd(win);
-    this.at(t, () => this.arrive(e.def || e.id), `arrive ${d.name}`);
-  }
-
   arrive(def) {
     const s = this.s;
     const d = typeof def === 'string' ? PERSON[def] : def;
@@ -478,7 +512,7 @@ export class Director {
     if (mem.crew) this.placeCrew(mem.crew);
     // two or three the day desk checked in this afternoon
     const wd = s.clock.weekday();
-    const n = wd === 5 ? 0 : wd === 6 ? 1 : 2 + rng.int(2);
+    const n = s.memory.shiftNo === 1 ? 1 : s.memory.shiftNo <= 4 ? 1 + rng.int(2) : wd === 5 ? 0 : wd === 6 ? 1 : 2 + rng.int(2);
     for (let i = 0; i < n; i++) {
       const t = rollTraveler(rng, pickArchetype(rng, ['hiding', 'brokedown', 'trucker']));
       list.push({ def: t, day: true });
@@ -527,7 +561,7 @@ export class Director {
     p.inHouse = true;
     const sch = (p.def && p.def.schedule) || {};
     if (p.rosterId === 'HOLLIS') {
-      s.npcs.push(p, inRoom(at(19, 25)));
+      s.npcs.push(p, inRoom(this.load === 'first' ? this.rnd([at(19, 50), at(20, 0)]) : at(19, 25)));
       s.npcs.push(p, exitRoom());
       if (f.rentDue) { s.npcs.push(p, walkTo(SPOTS.lobbyIn.x, SPOTS.lobbyIn.z, 0)); s.npcs.push(p, toDesk('rent')); s.npcs.push(p, walkTo(ROOM_BY_NO[room].outside.x, ROOM_BY_NO[room].outside.z, 0)); }
       s.npcs.push(p, porch(this.rnd(sch.porch ? [sch.porch[1] - 20, sch.porch[1]] : at(22, 40))));
@@ -559,7 +593,7 @@ export class Director {
     }
     if (p.rosterId === 'WEXLER') {
       p.stay.nights = 2; p.leavingToday = false;
-      s.npcs.push(p, inRoom(this.rnd([at(19, 50), at(20, 20)])));
+      s.npcs.push(p, inRoom(this.rnd(this.load === 'first' ? [at(20, 55), at(21, 5)] : [at(19, 50), at(20, 20)])));
       s.npcs.push(p, exitRoom());
       s.npcs.push(p, walkTo(SPOTS.lobbyIn.x, SPOTS.lobbyIn.z, 0));
       p.visitId = 'WEXLER';
@@ -703,29 +737,41 @@ export class Director {
       this.at(when, () => s.incoming(def.make(s)), `call ${id}`);
     };
     if (this.variant.group === 'CREW' && this.reservations.some((r) => r.id === 'BUDDY')) call('triparish', at(19, 4) + rng() * 4);
-    call('june', this.rnd([at(20, 45), at(21, 25)]));
+    if (this.load === 'first') {
+      // June checks in; somebody asks the rate; somebody wants Peg's
+      call('june', this.rnd([at(20, 5), at(20, 15)]));
+      call('rates', this.rnd([at(24, 40), at(25, 0)]));
+      call('wrongPeg', this.rnd([at(26, 10), at(26, 40)]));
+      return;
+    }
+    if (this.load === 'light') call('june', this.rnd([at(20, 45), at(21, 25)]));
     const pool = OUTSIDE_CALLS.filter((c) => !c.fixed && (c.id !== 'gordy' || rng.chance(0.65)));
-    const n = 4 + rng.int(2);
+    const n = this.load === 'light' ? 2 : 3 + rng.int(2);
     for (const c of rng.sample(pool, Math.min(n, pool.length))) call(c.id, this.rnd(c.when));
-    if (rng.chance(0.5)) call('rates', this.rnd([at(21, 30), at(23, 30)]));
-    if (rng.chance(0.55)) { call('circulation', this.rnd([at(4, 20), at(4, 40)])); this.paperLate = true; }
+    if (this.load === 'normal' && rng.chance(0.5)) { call('circulation', this.rnd([at(4, 20), at(4, 40)])); this.paperLate = true; }
   }
 
   /** Things go a little wrong, in rooms that have somebody in them. */
   scheduleProblems() {
     const s = this.s, rng = s.rng;
+    if (this.load === 'first') {
+      // two small things, well apart: towels for the family, then a television
+      this.at(this.rnd([at(22, 25), at(22, 40)]), () => this.roomProblem('towels'), 'problem towels');
+      this.at(this.rnd([at(23, 20), at(23, 30)]), () => this.roomProblem('tv'), 'problem tv');
+      return;
+    }
     const kinds = rng.shuffle(['towels', 'tv', 'batteries', 'toilet', 'bulb', 'toiletries', 'blanket', 'pillow']);
-    const n = 4 + rng.int(2);
+    const n = this.load === 'light' ? 3 : 3 + rng.int(2);
     const times = [];
     for (let i = 0; i < n; i++) times.push(this.rnd([at(20, 20), at(23, 40)]));
     times.sort((a, b) => a - b);
     times.forEach((t, i) => this.at(t, () => this.roomProblem(kinds[i % kinds.length]), `problem ${kinds[i % kinds.length]}`));
     // the drink machine keeps somebody's money; the ice machine jams
     this.at(this.rnd([at(21, 40), at(22, 50)]), () => this.errand('vend'), 'vend');
-    this.at(this.rnd([at(22, 30), at(23, 50)]), () => { s.property.jamIce(); this.errand('ice'); }, 'ice jam');
+    if (this.load === 'normal') this.at(this.rnd([at(22, 30), at(23, 50)]), () => { s.property.jamIce(); this.errand('ice'); }, 'ice jam');
     this.at(this.rnd([at(20, 50), at(21, 40)]), () => this.errand('ice'), 'ice');
     // somebody walks down to ask something (food, an iron, HBO, a late checkout, quarters)
-    const nq = 1 + rng.int(2);
+    const nq = this.load === 'light' ? 1 : 1 + rng.int(2);
     for (let i = 0; i < nq; i++) {
       this.at(this.rnd([at(20, 30), at(23, 30)]), () => {
         const awake = s.npcs.list.filter((p) => p.inRoom && !p.asleep && p.room && p.stay && !p.followsLeader && !p.groupMember && p.act && p.act.kind === 'inRoom');
@@ -735,7 +781,7 @@ export class Director {
       }, 'question');
     }
     // one noise complaint, if there is anybody to make noise and anybody to hear it
-    this.at(this.rnd([at(21, 35), at(22, 30)]), () => this.noise(), 'noise');
+    if (this.load === 'normal') this.at(this.rnd([at(21, 35), at(22, 30)]), () => this.noise(), 'noise');
   }
 
   /** Whoever is awake in a room calls down about something. */
@@ -804,7 +850,7 @@ export class Director {
   scheduleVisits() {
     const s = this.s, rng = s.rng;
     this.at(this.rnd(PERSON.TAMMY.schedule.visit), () => this.visitor('TAMMY'), 'tammy');
-    if (rng.chance(0.7)) this.at(this.rnd(PERSON.DEPUTY.schedule.visit), () => this.visitor('DEPUTY'), 'deputy');
+    if (this.load !== 'first' && rng.chance(0.6)) this.at(this.rnd(PERSON.DEPUTY.schedule.visit), () => this.visitor('DEPUTY'), 'deputy');
   }
 
   /** Somebody walks over from across the road. */

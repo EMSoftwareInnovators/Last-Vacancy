@@ -309,6 +309,20 @@ function buildLobby(mb, T) {
   mb.box(t.x0 + 0.02, y, t.z1 - 0.22 - 0.02, t.x1 - 0.02, y + 0.03, t.z1 - 0.02 + 0.15, {
     all: { tex: T.crtBody, uv: [0, 0, 32, 8] }, py: { tex: T.keyboard, uv: [0, 0, 64, 32] },
   });
+  // the desk phone: handset in its cradle on the clerk's left, keys and line buttons on the right
+  const ph = P.phone;
+  mb.box(ph.x0, y, ph.z0, ph.x1, y + 0.05, ph.z1, { all: { tex: T.handset, uv: [0, 0, 16, 8] } });
+  mb.box(ph.x0 + 0.13, y + 0.05, ph.z0 + 0.02, ph.x1 - 0.02, y + 0.07, ph.z1 - 0.02, {
+    all: { tex: T.handset, uv: [0, 0, 16, 8] }, py: { tex: T.deskPhoneTop, uv: [0, 0, 32, 32] }, ny: null,
+  });
+  mb.box(ph.x0 + 0.01, y + 0.05, ph.z0 + 0.02, ph.x0 + 0.12, y + 0.09, ph.z1 - 0.02, { all: { tex: T.handset, uv: [0, 0, 16, 8] }, ny: null });
+  mb.box(ph.x0 - 0.005, y + 0.09, ph.z0 + 0.01, ph.x0 + 0.125, y + 0.125, ph.z1 - 0.01, { all: { tex: T.handsetDark, uv: [0, 0, 16, 8] } });
+  mb.box(ph.x0 - 0.01, y + 0.1, ph.z0 + 0.0, ph.x0 + 0.13, y + 0.145, ph.z0 + 0.08, { all: { tex: T.handsetDark, uv: [0, 0, 16, 8] } });
+  mb.box(ph.x0 - 0.01, y + 0.1, ph.z1 - 0.08, ph.x0 + 0.13, y + 0.145, ph.z1, { all: { tex: T.handsetDark, uv: [0, 0, 16, 8] } });
+  mb.solid(ph.x0 + 0.02, y + 0.01, ph.z0 - 0.04, ph.x0 + 0.04, y + 0.02, ph.z0, T.plasticBlack, [0, 0, 8, 8]);   // the cord
+  // the wake-up sheet on its clipboard, by the phone
+  const wk = P.wakeup;
+  mb.box(wk.x0, y, wk.z0, wk.x1, y + 0.012, wk.z1, { all: { tex: T.wood, uv: [0, 0, 16, 8] }, py: { tex: T.wakeSheet, uv: [0, 0, 32, 32] }, ny: null });
   // dot-matrix printer
   const pr = P.printer;
   mb.box(pr.x0, y, pr.z0, pr.x1, pr.y1, pr.z1, { all: { tex: T.crtBody, uv: [0, 0, 32, 16] }, py: { tex: T.printerTop, uv: [0, 0, 64, 32] } });
