@@ -66,22 +66,28 @@ export class Game {
     this.doors = new Doors();
     this.actorMeshes = buildActorMeshes();
 
-    /* The mouse and the browser. Escape always releases pointer lock, and an
-       Escape keypress does not count as a gesture, so nothing can take the
-       lock back until the next real key or click. So: take it back on the
-       very next one, from inside that event; never mistake an Escape that
-       closed a piece of paper for a pause; and say so on screen while the
-       mouse is loose. */
+    /* The mouse and the browser. While the mouse is held, Firefox and Chrome
+       keep Escape for themselves: it lets go of the mouse and the page never
+       hears the key. So a lock that goes away without our asking, with the
+       window still in front, was the player's Escape, and it is played into
+       the next frame as one: the rack, the terminal, a note and the world all
+       get it the way they get any Escape (see lostLock). Escape does not count
+       as a gesture, so nothing can take the mouse back until the next real key
+       or click: take it on that one, from inside the event, and say so on
+       screen meanwhile. */
     this.input.onLockChange = (locked) => {
-      const ours = this.time - (this._lockAskedT || -99) < 0.6;
       if (locked) { this.wantLock = true; return; }
-      if (ours) return;
-      // the Escape that just closed the terminal (or a note, or the rack) took the lock with it
-      if (this.time - (this._escT || -99) < 0.8 && this._escFocus) return;
-      if (this.state === ST.PLAY && !this.focus()) this.pause();
+      if (performance.now() - (this._dropT || -1e9) < 600) return;   // we let go of it ourselves
+      this._lostT = performance.now();
     };
     this.input.onGesture = (code) => {
-      if (code === 'Escape') { this._escT = this.time; this._escFocus = this.focus(); return; }
+      if (code === 'Escape') {
+        const now = performance.now();
+        // a browser that eats the key and then hands it over anyway: one Escape, not two
+        if (now - (this._fakeEscT || -1e9) < 150) this.input.pressed.delete('Escape');
+        this._escT = now;
+        return;
+      }
       if (this.input.locked) return;
       const playing = this.state === ST.PLAY && this.wantLock;
       // Enter / E / Space on "Back to the desk" is the resume: lock on that very keypress
@@ -109,6 +115,7 @@ export class Game {
      ============================================================ */
   frame(now) {
     this.input.poll();
+    if (this._lostT) this.lostLock();
     if (this.input.scheme !== this._scheme) {
       this._scheme = this.input.scheme;
       setScheme(this._scheme);
@@ -166,8 +173,24 @@ export class Game {
   backHit() { return this.input.hit('Escape', 'UiBack'); }
   confirmOrClick() { return this.confirmHit() || this.input.mousePressed[0]; }
   quietly(fn) { try { fn(); } catch (err) { this._audioDead = err; } }
-  grabLock() { this._lockAskedT = this.time; this.input.requestLock(); }
-  dropLock() { this._lockAskedT = this.time; this.input.exitLock(); }
+  grabLock() { this.input.requestLock(); }
+  dropLock() { this._dropT = performance.now(); this.input.exitLock(); }
+
+  /* The mouse was let go and we did not ask (see boot). Settled a frame
+     later, so a browser that also passes the Escape on has had its say. */
+  lostLock() {
+    const t = this._lostT;
+    this._lostT = 0;
+    if (Math.abs(t - (this._escT || -1e9)) < 150) return;          // the page heard that Escape itself
+    const away = document.hidden || !document.hasFocus() || t - this.input.blurT < 500;
+    if (away) {                                                        // alt-tab, another window: just stop
+      if (this.state === ST.PLAY && !this.focus()) this.pause();
+      return;
+    }
+    if (this.state !== ST.PLAY) return;
+    this.input.pressed.add('Escape');
+    this._fakeEscT = performance.now();
+  }
 
   onSchemeChanged() {
     if (this.state === ST.HOWTO) this.ui.showPanel(howToHtml());

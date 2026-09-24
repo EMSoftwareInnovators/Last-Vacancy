@@ -157,6 +157,7 @@ export class Input {
     this.mouse = [false, false, false];
     this.mousePressed = [false, false, false];
     this.locked = false;
+    this.blurT = -1e9;            // when the window last lost focus (performance.now)
     this.sensitivity = 0.0022;
     this.padSensitivity = 4.2;          // radians per second at full deflection
     this.invertY = false;
@@ -218,6 +219,7 @@ export class Input {
       this.down.delete(k); this.released.add(k);
     });
     addEventListener('blur', () => {
+      this.blurT = performance.now();
       this.down.clear(); this.mouse = [false, false, false];
       this._padDown.clear(); this.moveX = 0; this.moveZ = 0; this.lookX = 0; this.lookY = 0;
       this._nav.u = this._nav.d = this._nav.l = this._nav.r = 0;
