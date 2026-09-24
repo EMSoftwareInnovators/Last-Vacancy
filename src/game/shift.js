@@ -381,7 +381,9 @@ export class Shift {
     let go = i.hit('KeyE', 'Enter', 'Space') || i.mousePressed[0];
     if (dig >= 0 && dig < n) { R.sel = dig; go = true; }
     if (go) {
-      if (g.ui.typing) { g.ui.finishTyping(); return; }
+      // ENTER on a line still typing finishes it; a number key means you already know
+      if (g.ui.typing && dig < 0) { g.ui.finishTyping(); return; }
+      g.ui.finishTyping();
       g.sound.uiSelect();
       R.pick();
     }
@@ -622,7 +624,8 @@ export class Shift {
     let go = i.hit('KeyE', 'Enter', 'Space') || i.mousePressed[0];
     if (dig >= 0 && dig < n) { R.sel = dig; go = true; }
     if (go) {
-      if (g.ui.typing) { g.ui.finishTyping(); return; }
+      if (g.ui.typing && dig < 0) { g.ui.finishTyping(); return; }
+      g.ui.finishTyping();
       g.sound.phoneButton();
       const ch = node.choices && node.choices[R.sel];
       if (ch && ch.fn) {
