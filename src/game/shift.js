@@ -23,7 +23,7 @@ import { Clock } from './sim/clock.js';
 import { Rooms } from './sim/rooms.js';
 import { Ledger } from './sim/ledger.js';
 import { Memory } from './sim/memory.js';
-import { NPCs, walkTo, toDesk, exitRoom, enterRoom, inRoom, idle, until } from './sim/npcs.js';
+import { NPCs, walkTo, toDesk, exitRoom, enterRoom, inRoom, idle, until, follow } from './sim/npcs.js';
 import { Cars } from './sim/cars.js';
 import { Desk } from './sim/desk.js';
 import { Phone } from './sim/phone.js';
@@ -43,6 +43,8 @@ import { Terminal } from './ui/terminal.js';
 import { Board } from './ui/board.js';
 import { newsHtml } from './ui/papers.js';
 import { choicesHtml } from './ui/ui.js';
+import { XBuilder, panel } from './world/geo.js';
+import { F_EMIT } from '../engine/raster.js';
 
 const at = Clock.at;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -78,6 +80,7 @@ export class Shift {
       corrections: 0, caughtExpired: 0, wrongKeys: 0, refunds: 0, putOff: 0, privacy: 0, privacyKept: 0, reservationsTaken: 0,
       calledJune: 0, lies: 0, luzWaited: 0, checkins: 0, walkIns: 0, checkouts: 0, calls: 0, departures: 0, rackOff: 0,
       drawerDelta: 0, audited: false, expiredTaken: 0, occupied: 0, wakesMade: 0, lostGuests: 0, misTransfers: 0, waffleIncidents: 0,
+      turnedAway: 0, turnedAwayWithRooms: 0, walkedReservation: 0, noVacancyMiss: 0, droveBy: 0,
     };
     this.flags = {};
     this.notesLog = [];
@@ -96,6 +99,38 @@ export class Shift {
     this.shiftOver = false;
     this.objT = 0;
     this.juneLines = this.memory.d.lastShift && this.memory.d.lastShift.note ? this.memory.d.lastShift.note : firstNote();
+    this.noVacancy = false;
+    this.paintSigns();
+    this.startDay = this.clock.dayLabel();
+    this.meshes = this.buildMeshes(game.T);
+  }
+
+  /** The little things on the office walls that only this file cares about. */
+  buildMeshes(T) {
+    const mk = (fn) => { const b = new XBuilder(); b.light = () => 1; fn(b); return b.build(); };
+    return {
+      vacancySwitch: mk((b) => {
+        panel(b, 0, 0.3, 0, 0.34, 0.09, 0, T.vacancy, F_EMIT);
+        b.solid(-0.05, 0.02, -0.02, 0.05, 0.2, 0.0, T.plasticBlack, [0, 0, 8, 8]);
+        b.solid(-0.012, 0.1, 0.0, 0.012, 0.14, 0.03, T.chrome || T.metal, [0, 0, 4, 4]);
+      }),
+    };
+  }
+
+  /* The signs are textures the world meshes hold. Paint them to match the
+     motel's memory: the sign on the desk (fixed or not), and VACANCY lit. */
+  paintSigns() {
+    const T = this.g.T;
+    if (!T._orig) T._orig = { noPets: T.noPets.px.slice(), vacancy: T.vacancy.px.slice() };
+    T.noPets.px.set(this.memory.d.signFixed ? T.noPetsFixed.px : T._orig.noPets);
+    T.vacancy.px.set(this.noVacancy ? T.noVacancy.px : T._orig.vacancy);
+  }
+  toggleVacancy() {
+    this.noVacancy = !this.noVacancy;
+    this.paintSigns();
+    this.g.sound.switchClick();
+    this.toast(this.noVacancy ? 'NO VACANCY. The NO lights up out on the highway.' : 'VACANCY.', 'note');
+    if (this.noVacancy) { const free = this.rooms.vacantClean().length; if (free > 1) this.log(`Put the NO VACANCY sign on with ${free} clean rooms.`, 'note'); }
   }
 
   get dynSolids() { return this.g.doors.solids.concat(this.cars.solids); }
@@ -166,7 +201,13 @@ export class Shift {
       case 'phone': this.updatePhone(); break;
       case 'terminal': if (!this.terminal.handle(input)) this.closeOverlay(); else g.ui.showTerminal(this.terminal.render()); break;
       case 'board': if (!this.board.handle(input)) this.closeOverlay(); else { const b = this.board.render(); g.ui.showBoard(b.grid, b.info); } break;
-      case 'paper': if (input.hit('Escape', 'UiBack', 'KeyE', 'Enter', 'Space', 'Backspace') || g.input.mousePressed[0]) this.closeOverlay(); break;
+      case 'paper': {
+        const wrap = document.querySelector('#paper .sheetwrap');
+        if (wrap && input.hit('ArrowDown', 'KeyS')) wrap.scrollTop += wrap.clientHeight * 0.35;
+        if (wrap && input.hit('ArrowUp', 'KeyW')) wrap.scrollTop -= wrap.clientHeight * 0.35;
+        if (input.hit('Escape', 'UiBack', 'KeyE', 'Enter', 'Space', 'Backspace') || g.input.mousePressed[0]) this.closeOverlay();
+        break;
+      }
       case 'picker': if (!this.picker.handle(input)) this.closeOverlay(); else g.ui.showPaper(this.picker.render()); break;
       default: this.updateWorld(dt); break;
     }
@@ -250,7 +291,7 @@ export class Shift {
   heldAll(kind) { return this.g.player.held.filter((h) => h.kind === kind); }
   canHold(it) {
     const H = this.g.player.held;
-    if (it.pocket) return H.filter((h) => h.pocket).length < 12;
+    if (it.pocket) return H.filter((h) => h.pocket).length < 24;
     const hands = H.filter((h) => !h.pocket);
     if (it.bulky) return hands.length === 0;
     if (hands.some((h) => h.bulky)) return false;
@@ -385,6 +426,7 @@ export class Shift {
     this.stats.checkins++;
     if (!p.stay.reservation && !p.inHouse) this.stats.walkIns++;
     if (rooms.length > 1) { p.groupRooms = rooms; p.groupFolios = folios; }
+    if (p.rosterId === 'BUDDY') this.crewState = { rooms: rooms.slice(), nights: form.nights || p.stay.nights || 3 };
     const r = this.rooms.def(rooms[0]);
     // what they will notice once they are in the room
     p.bedMismatch = !p.groupRooms && p.stay.party >= 3 && r.beds !== 'QQ';
@@ -406,6 +448,11 @@ export class Shift {
       this.scheduleGuestEvents(p);
     }
     if (reason === 'checkout') this.stats.checkouts++;
+    if (reason === 'turnedAway') {
+      this.npcs.clear(p);
+      for (const id of p.party) { const c = this.npcs.find(id); if (c) this.npcs.clear(c), this.npcs.push(c, follow(p.id)); }
+      this.director.driveOff(p, true);
+    }
   }
 
   /** Per-guest things that happen later in the night, once they have a room. */
@@ -478,11 +525,11 @@ export class Shift {
     }
   }
 
-  checkOutFolio(f) {
+  checkOutFolio(f, noReceipt) {
     const L = this.ledger;
     f.open = false;
     this.rooms.checkout(f.room);
-    this.printerTray.push({ kind: 'receipt', room: f.room, label: `receipt, Rm ${f.room}` });
+    if (!noReceipt) this.printerTray.push({ kind: 'receipt', room: f.room, label: `receipt, Rm ${f.room}` });
     const i = this.keyDrop.findIndex((k) => k.room === f.room);
     if (i >= 0 && !f.keyCollected) { /* the key is still in the drop box; that's fine */ }
     this.stats.checkouts += f.departed ? 0 : 0;
@@ -644,7 +691,10 @@ export class Shift {
      ============================================================ */
   openTerminal() { this.standUp(); this.mode = 'terminal'; this.terminal.open(); this.g.ui.showTerminal(this.terminal.render()); }
   openBoard() { this.standUp(); this.mode = 'board'; this.board.open(); const b = this.board.render(); this.g.ui.showBoard(b.grid, b.info); }
-  openPaper(html) { this.mode = 'paper'; this.g.sound.paper(); this.g.ui.showPaper(html); }
+  openPaper(html) {
+    this.mode = 'paper'; this.g.sound.paper(); this.g.ui.showPaper(html);
+    const wrap = document.querySelector('#paper .sheetwrap'); if (wrap) wrap.scrollTop = 0;
+  }
   openPicker(p) { this.mode = 'picker'; this.picker = p; this.g.ui.showPaper(p.render()); }
   closeOverlay() {
     const ui = this.g.ui;
@@ -661,10 +711,10 @@ export class Shift {
   imprint() {
     const card = this.heldOf('card');
     if (!card) return;
-    const f = this.ledger.folio(card.folio) || null;
-    const amt = f ? this.ledger.balance(f) : 0;
+    const ids = card.folios || [card.folio];
+    const amt = round2(ids.reduce((n, id) => { const f = this.ledger.folio(id); return n + (f ? this.ledger.balance(f) : 0); }, 0));
     this.g.sound.imprint(0); setTimeout(() => this.g.quietly(() => this.g.sound.imprint(1)), 180);
-    const slip = makeItem('slip', { card: card.card, owner: card.owner, amount: amt, folio: card.folio, signed: false });
+    const slip = makeItem('slip', { card: card.card, owner: card.owner, amount: amt, folio: card.folio, folios: ids, signed: false });
     this.giveItem(slip, true);
     this.toast(`CHUNK-CHUNK. Slip for ${money(amt)}. Now they sign it.`, 'note');
   }
@@ -718,10 +768,7 @@ export class Shift {
     if (!t) { this.toast('Mr. Wexler would have opinions.', 'note'); return; }
     this.memory.d.signFixed = true;
     this.flags.signFixed = true;
-    const T = this.g.T;
-    // the texture on the desk front is the one the mesh holds; paint the fix into it
-    const src = T.noPetsFixed.px;
-    T.noPets.px.set(src);
+    this.paintSigns();
     this.g.sound.pen();
     this.tasks.complete(t);
     this.memory.opinion('WEXLER', 2);
@@ -853,6 +900,8 @@ export class Shift {
     }
     const stockKind = { cereal: 'cereal', pastry: 'muffins', bagels: 'bagels', fruit: 'fruit' }[id];
     const n = B.trays[id];
+    if (id === 'cereal' && this.heldOf('milk')) return 'Put out the milk (in the ice bin)';
+    if (id === 'cereal' && !this.heldOf('cereal') && B.milk.level <= 0.02 && n > 0) return `Cereal: ${n < 4 ? 'a few' : 'plenty'} -- but no milk out (fridge)`;
     if (this.heldOf(stockKind)) return `Fill the ${STATION_BY_ID[id].label.toLowerCase()} (${n} out now)`;
     return `${STATION_BY_ID[id].label}: ${n <= 0 ? 'empty' : n < 4 ? 'a few left' : 'plenty'}`;
   }
@@ -900,6 +949,8 @@ export class Shift {
       return;
     }
     const stockKind = { cereal: 'cereal', pastry: 'muffins', bagels: 'bagels', fruit: 'fruit' }[id];
+    const milk = id === 'cereal' && this.heldOf('milk');
+    if (milk) { this.removeHeld(milk); B.milk.level = 1; snd.cloth(); return; }
     const it = this.heldOf(stockKind);
     if (!it) return;
     this.removeHeld(it);
@@ -1139,6 +1190,7 @@ export class Shift {
     this.property.draw(draws, M);
     this.breakfast.draw(draws);
     if (!this.mopOut && M.mop) draws.push({ mesh: M.mop, x: MOP_HOME.x, y: 0, z: MOP_HOME.z, yaw: 0.6, r: 0.8 });
+    draws.push({ mesh: this.meshes.vacancySwitch, x: 4.37, y: 1.2, z: -6.93, yaw: 0, r: 0.5, shade: 1 });
     for (const f of this.floorItems) {
       const mesh = M[f.item.mesh] || M.box;
       draws.push({ mesh, x: f.x, y: (f.y || 0) + 0.02, z: f.z, yaw: f.item.id * 1.7, r: 0.5, lv: f.lv });
@@ -1208,6 +1260,7 @@ export class Shift {
       if (this.property.news.state === 'bundle') return ['The papers are out front. Bring them in and stack them.', false];
       if (Object.values(B.trays).some((n) => n <= 0)) return ['Stock the breakfast counter from the pantry.', false];
       if (B.juice.level < 0.2) return ['Mix the juice (concentrate, pantry fridge).', false];
+      if (B.milk.level < 0.1) return ['Put the milk out by the cereal (pantry fridge).', false];
       if (B.waffle.batter < 0.05) return ['Mix the waffle batter.', false];
       if (!B.waffle.on) return ['Turn the waffle iron on.', false];
       if (B.tv.channel === 'OFF') return ['Turn on the breakfast TV.', false];
@@ -1237,24 +1290,24 @@ export class Shift {
   report() {
     const st = this.stats, B = this.breakfast;
     const tasksLeft = this.tasks.open().filter((t) => t.kind !== 'gate' || !this.property.gate.locked).length;
-    const earl = this.npcs.find('EARL');
     const earlGuest = this.memory.d.guests.EARL;
+    const earlTonight = earlGuest && earlGuest.lastShift === this.memory.shiftNo;
     const missedNames = this.wakeups.list.filter((w) => w.status === 'missed').map((w) => { const p = this.npcs.find(w.who); return p ? p.name.split(' ')[0] : null; }).filter(Boolean);
     const short = Object.entries(B.shortages).sort((a, b) => b[1] - a[1])[0];
     const r = {
-      shiftNo: this.memory.shiftNo, dateLabel: `${this.clock.dayLabel()} (shift ${this.memory.shiftNo})`,
+      shiftNo: this.memory.shiftNo, dateLabel: `night of ${this.startDay} (shift ${this.memory.shiftNo})`, pruitts: !!(this.memory.d.guests.PRUITT && this.memory.d.guests.PRUITT.lastShift === this.memory.shiftNo),
       checkins: st.checkins, walkIns: st.walkIns, checkouts: st.checkouts, occupied: st.occupied || this.rooms.all().filter((x) => x.sys === 'OC').length,
       calls: st.calls, missedCalls: st.missedCalls, wakesMade: st.wakesMade, missedWakes: st.wakeMissed, missedWakeNames: missedNames.join(' and '),
       tasksDone: st.tasksDone, tasksLeft, audited: st.audited, drawerDelta: st.drawerDelta, drawerOff: st.audited && Math.abs(st.drawerDelta) > 0.004 ? 1 : 0,
       pots: st.pots, cups: B.served.cups, plates: B.served.plates, waffles: B.served.waffles, spills: st.spills,
       privacy: st.privacy, privacyKept: st.privacyKept, expiredTaken: st.expiredTaken, caughtExpired: st.caughtExpired, wrongKeys: st.wrongKeys,
-      rackOff: st.rackOff, earl105: earl && earl.room ? earl.room === '105' : undefined,
+      rackOff: st.rackOff, earl105: earlTonight ? earlGuest.lastRoom === '105' : undefined,
       earlCoffee: earlGuest && earlGuest.flags.coffeeLie ? 'lie' : null,
       homemadeCoupon: !!this.flags.homemadeCoupon, petAllowed: !!this.flags.petAllowed, signFixed: !!this.flags.signFixed,
       waffle: st.waffleIncidents ? (st.waffleIncidents === 1 ? 'one incident. The ceiling tile above it is a new color' : `${st.waffleIncidents} incidents. I have started calling it "the situation"`) : '',
       breakfastShort: short && short[1] >= 2 ? ({ pastry: 'muffins', bagels: 'bagels', cereal: 'cereal', fruit: 'fruit', juice: 'juice', coffee: 'coffee', decaf: 'decaf', waffle: 'waffle batter' }[short[0]]) : '',
       coffeeGood: !!this.flags.coffeeOnTime && !st.shortages, calledJune: st.calledJune,
-      lostGuests: st.lostGuests, noVacancyMiss: false,
+      lostGuests: st.lostGuests, noVacancyMiss: st.noVacancyMiss > 0, turnedAwayWithRooms: st.turnedAwayWithRooms, walkedReservation: st.walkedReservation, droveBy: st.droveBy,
       notes: this.notesLog.filter((n) => n.kind !== 'plain').slice(-10),
     };
     return r;
@@ -1275,7 +1328,10 @@ export class Shift {
       if (left > 0 && p.rosterId && p.kind !== 'crew') inHouse.push({ id: p.rosterId, room: p.room, nightsLeft: left });
     }
     mem.d.inHouse = inHouse;
-    mem.d.flags.crewIn = false;
+    // the crew, if they are on the job another day (they drove off to it at five-thirty)
+    const cs = this.crewState;
+    if (cs && cs.nights - 1 > 0) mem.d.crew = { rooms: cs.rooms, nightsLeft: cs.nights - 1 };
+    else delete mem.d.crew;
     mem.d.lastShift = { report: { checkins: r.checkins, missedWakes: r.missedWakes, drawerDelta: r.drawerDelta }, note };
     mem.d.rooms = null;
     // the truck comes, some of what ran out gets replaced

@@ -23,7 +23,7 @@ const ROWS = [
   { label: 'EAST · DOWNSTAIRS · POOLSIDE', rooms: ['108', '109', '110', '111', '112', '113', '114', '115'] },
   { label: 'EAST · UPSTAIRS', rooms: ['208', '209', '210', '211', '212', '213'] },
 ];
-const TABS = ['VC', 'VD', 'OC', 'RS', 'OO'];
+const TABS = ['VC', 'VD', 'OC', 'RS', 'OO', 'MT'];
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 export class Board {
@@ -71,6 +71,18 @@ export class Board {
         for (const k of mine) { s.removeHeld(k); s.rooms.hangKey(no); }
         s.g.sound.keys(0);
         this.msg = `Hung ${mine.length > 1 ? `${mine.length} keys` : 'the key'} on ${no}.${st.status === 'OC' && !st.guest ? ' The tab still says OCC.' : ''}`;
+      } else if (st.keys > 0 && this.wanted().length > 1 && this.wanted().some((w) => w.room === no && w.who.groupRooms)) {
+        // a block: pull every key the group needs, the way you would with an envelope
+        const block = this.wanted().filter((w) => w.who.groupRooms);
+        let n = 0;
+        for (const w of block) {
+          const bst = s.rooms.get(w.room);
+          if (bst.keys <= 0) continue;
+          s.rooms.takeKey(w.room); s.giveItem(makeItem('key', { room: w.room }), true); n++;
+          if (bst.guest && bst.status !== 'OC') bst.status = 'OC';
+        }
+        s.g.sound.keys(0);
+        this.msg = `Pulled the whole block: ${n} keys. The tabs go to OCC.`;
       } else if (st.keys > 0) {
         if (!s.canHold(makeItem('key'))) { this.msg = 'Your hands are full.'; s.g.sound.error(); return true; }
         s.rooms.takeKey(no);

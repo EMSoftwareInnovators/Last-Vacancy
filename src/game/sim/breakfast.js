@@ -30,6 +30,8 @@ export class Breakfast {
     this.coffee = { coffee: pot(), decaf: pot() };
     this.water = { level: 0 };
     this.juice = { level: 0 };
+    this.milk = { level: 0 };
+    this.virtual = [];          // the part of a group nobody draws: they still eat
     this.trays = { cereal: 0, pastry: 0, bagels: 0, fruit: 0 };
     this.waffle = { batter: 0, on: false, state: 'ok', cooking: null, smokeT: 0, used: 0 };
     this.tv = { channel: 'OFF', frameT: 0, frame: 0 };
@@ -102,6 +104,7 @@ export class Breakfast {
       got = this.makeWaffle(p);
     } else if (this.trays[id] !== undefined) {
       if (this.trays[id] > 0) this.trays[id]--; else { got = false; this.short(p, id); }
+      if (got && id === 'cereal') { if (this.milk.level > 0.02) this.milk.level = Math.max(0, this.milk.level - 0.08); else this.short(p, 'milk'); }
     }
     if (got) this.served.plates += id === 'coffee' || id === 'decaf' || id === 'juice' ? 0 : 1;
     // a spill, now and then, and more often when you are eight
@@ -112,6 +115,17 @@ export class Breakfast {
     this.shortages[id] = (this.shortages[id] || 0) + 1;
     this.s.stats.shortages++;
     this.s.breakfastShort(p, id);
+  }
+
+  /** One plate's worth of somebody you never see. */
+  ghostDiner(v) {
+    const s = this.s, rng = s.rng;
+    if (rng.chance(0.85)) { if (!this.pour(rng.chance(0.2) ? 'decaf' : 'coffee')) this.shortages.coffee = (this.shortages.coffee || 0) + 1; }
+    if (rng.chance(0.5) && this.juice.level > 0.03) this.juice.level = Math.max(0, this.juice.level - 0.06);
+    const food = v.kind === 'TEAM' && rng.chance(0.45) ? 'waffle' : rng.pick(['pastry', 'bagels', 'cereal', 'fruit', 'pastry']);
+    if (food === 'waffle') { if (this.waffle.on && this.waffle.batter > 0.02 && this.waffle.state === 'ok') { this.waffle.batter = Math.max(0, this.waffle.batter - 0.05); this.served.waffles++; } else this.shortages.waffle = (this.shortages.waffle || 0) + 1; }
+    else if (this.trays[food] > 0) { this.trays[food]--; this.served.plates++; if (food === 'cereal' && this.milk.level > 0.02) this.milk.level = Math.max(0, this.milk.level - 0.08); }
+    else this.shortages[food] = (this.shortages[food] || 0) + 1;
   }
 
   /* ---------------- the waffle iron ---------------- */
@@ -212,6 +226,12 @@ export class Breakfast {
     this.tv.frameT += dt;
     if (this.tv.frameT > 0.45) { this.tv.frameT = 0; this.tv.frame++; }
     if (!this.open && s.clock.past(6, 0)) { this.open = true; s.breakfastOpens(); }
+    // groups: everybody the renderer does not draw still comes through the line
+    for (const v of this.virtual) {
+      if (v.left <= 0 || s.clock.min < v.from) continue;
+      const due = Math.round(v.n * Math.min(1, (s.clock.min - v.from) / Math.max(1, v.to - v.from)));
+      while (v.n - v.left < due && v.left > 0) { v.left--; this.ghostDiner(v); }
+    }
   }
 
   placeAmbience(sound, zone) {

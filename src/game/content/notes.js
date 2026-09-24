@@ -31,10 +31,16 @@ export function firstNote() {
 export function juneNote(r) {
   const out = [];
   // the opening depends on how it went overall, but she never says "good job" plainly
-  const bad = r.missedWakes + r.privacy + r.drawerOff + r.wrongKeys + r.lostGuests;
-  if (bad === 0 && r.checkins > 0) out.push('Went through the folios. Went through the drawer. Went through them again, because I didn\'t believe it the first time.');
-  else if (bad <= 2) out.push('Read the audit. Mostly fine. "Mostly" is doing some work in that sentence, so here:');
-  else out.push('Read the audit. Then I made coffee and read it again. We\'ll talk. Here\'s the list:');
+  const bad = r.missedWakes + r.privacy + r.drawerOff + r.wrongKeys + r.lostGuests + (r.walkedReservation || 0);
+  const k = r.shiftNo || 1;
+  const pick = (arr) => arr[k % arr.length];
+  if (bad === 0 && r.checkins > 0) out.push(pick([
+    'Went through the folios. Went through the drawer. Went through them again, because I didn\'t believe it the first time.',
+    'Audit balanced. I checked it with a pencil. It still balanced.',
+    'Nothing on the audit. I read it twice looking for the catch. There is always a catch. I\'ll find it Tuesday.',
+  ]));
+  else if (bad <= 2) out.push(pick(['Read the audit. Mostly fine. "Mostly" is doing some work in that sentence, so here:', 'Audit\'s close. Close counts in horseshoes and at the Starlite, a little. Here:', 'Not bad. Not nothing, either:']));
+  else out.push(pick(['Read the audit. Then I made coffee and read it again. We\'ll talk. Here\'s the list:', 'I have a list. You won\'t like the list. I didn\'t like writing the list:']));
 
   if (r.drawerOff > 0) out.push(`Drawer was ${r.drawerDelta < 0 ? 'short' : 'over'} ${money(Math.abs(r.drawerDelta))}. ${r.drawerDelta < 0 ? 'Short I can find. ' : 'Over is worse than short -- over means somebody didn\'t get their change.'}`);
   if (r.missedWakes) out.push(`${r.missedWakes === 1 ? 'A wake-up call didn\'t get made' : `${r.missedWakes} wake-up calls didn't get made`}. ${r.missedWakeNames ? `${r.missedWakeNames} told me about it at the desk.` : ''} The sheet is by the phone for a reason.`);
@@ -54,9 +60,19 @@ export function juneNote(r) {
   if (r.breakfastShort) out.push(`Breakfast ran out of ${r.breakfastShort}. We have a pantry. It's twenty feet from the counter.`);
   if (r.coffeeGood) out.push('Coffee was on time. People noticed. People always notice coffee, they just only tell you when it\'s wrong.');
   if (r.tasksLeft) out.push(`${r.tasksLeft} thing${r.tasksLeft > 1 ? 's' : ''} somebody asked for didn't get done. I heard about ${r.tasksLeft > 1 ? 'some of them' : 'it'} from Travis, who heard about it from the guest, who heard about it from nobody, which was the problem.`);
-  if (r.noVacancyMiss) out.push('We were full and the sign still said VACANCY. Three cars pulled in at two in the morning to find that out.');
+  if (r.noVacancyMiss) out.push('We were full and the sign still said VACANCY. People pulled in to find that out. The switch is by the key rack.');
+  if (r.turnedAwayWithRooms) out.push('You sent somebody up the road to the Ramada with clean rooms on the rack. The Ramada thanks you.');
+  if (r.walkedReservation) out.push('Somebody with a reservation got walked. That is the one thing we do not do. I called them myself this morning.');
   if (r.calledJune > 1) out.push('You called me at home. Twice. If nothing\'s on fire, write it down.');
-  if (out.length < 3) out.push('The Pruitt boy wrote on the breakfast table in syrup. I don\'t blame you for that. I just wanted somebody else to know.');
+  if (out.length < 3) {
+    const filler = [
+      'Somebody put a quarter in the ice machine. I don\'t know why. Neither does the ice machine.',
+      'The Coke man says we\'re his favorite stop. He says that to everybody. I still liked hearing it.',
+      'Hollis says you\'re "all right." He said the last one was "a person." So.',
+      'Mrs. Abernathy wants you to know the ice machine sounded very nice last night.',
+    ];
+    out.push(r.pruitts ? 'The Pruitt boy wrote on the breakfast table in syrup. I don\'t blame you for that. I just wanted somebody else to know.' : filler[(r.shiftNo || 1) % filler.length]);
+  }
   out.push(r.shiftNo <= 1 ? 'Same time tonight.' : 'Same time tonight. Don\'t let the waffle iron win.');
   return out;
 }

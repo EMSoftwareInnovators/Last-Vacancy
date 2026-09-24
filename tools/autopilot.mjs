@@ -13,7 +13,8 @@ await T.page.keyboard.press('Escape');
 await T.wait(100);
 
 const result = await T.ev(async (opts) => {
-  const g = window.__game, s = g.shift;
+  const g = window.__game;
+  let s = g.shift;
   const { makeItem } = await import('/src/game/sim/items.js');
   const { SPOTS } = await import('/src/game/world/layout.js');
   const { Clock } = await import('/src/game/sim/clock.js');
@@ -51,7 +52,7 @@ const result = await T.ev(async (opts) => {
       if (s.printerTray.length) s.tearPrinter();
       s.talkTo(p); converse(null, (ch) => { const i = label(ch, /Here's your receipt/); return i >= 0 ? i : 0; });
       // the key they handed over goes on the hook, the tab to dirty
-      for (const k of s.heldAll('key')) { s.removeHeld(k); s.rooms.hangKey(k.room); const st = s.rooms.get(k.room); if (!st.guest) st.status = 'VD'; }
+      for (const k of s.heldAll('key')) { s.removeHeld(k); s.rooms.hangKey(k.room); const st = s.rooms.get(k.room); if (!st.guest && !(opts.sloppy && Math.random() < 0.5)) st.status = 'VD'; }
       return;
     }
     if (reason === 'rent') {
@@ -62,7 +63,10 @@ const result = await T.ev(async (opts) => {
     }
     converse(null, (ch) => { const i = label(ch, /Let me move you|I'll|right over|I'm so sorry|Write a paid-out/); return i >= 0 ? i : 0; });
     // a room move or the wrong key: a key is wanted now
-    if (p.ci && p.ci.stage === 'key' && s.desk.line.includes(p)) { fetchKeys(p); s.talkTo(p); converse(); }
+    if (p.ci && p.ci.stage === 'key' && s.desk.line.includes(p)) {
+      fetchKeys(p); s.talkTo(p);
+      converse(null, (ch) => { const i = ch.findIndex((c) => c.label === `(Hand over key ${p.ci.room}.)`); return i >= 0 ? i : 0; });
+    }
     for (const k of s.heldAll('key')) { s.removeHeld(k); s.rooms.hangKey(k.room); }
   }
 
@@ -70,7 +74,8 @@ const result = await T.ev(async (opts) => {
     const rooms = p.groupRooms || [p.ci.room];
     for (const no of rooms) {
       if (s.heldOf('key', (k) => k.room === no)) continue;
-      if (opts.sloppy && Math.random() < 0.15 && !p.groupRooms) {
+      if (opts.sloppy && !p._sloppyKey && Math.random() < 0.3 && !p.groupRooms) {
+        p._sloppyKey = true;
         const other = s.rooms.all().find((st) => st.keys > 0 && st.no !== no);
         if (other) { s.rooms.takeKey(other.no); s.giveItem(makeItem('key', { room: other.no }), true); say(`  (sloppy: grabbed key ${other.no} for ${no})`); continue; }
       }
@@ -89,7 +94,11 @@ const result = await T.ev(async (opts) => {
     if (!f.p) { say(`  terminal: no guest for ${p.name}`); return; }
     if (opts.sloppy && Math.random() < 0.3) { f.party = null; f.beds = null; f.options = t.roomOptions(f); }
     for (let k = 0; k < 3 && t.form && t.form.p; k++) { t.sel = t.formRows(t.form).length - 1; t.handle(fake(['Enter'])); }
-    if (p.ci.stage !== 'pay') { say(`  terminal did not post ${p.name}: ${t.msg}`); return; }
+    if (p.ci.stage !== 'pay') {
+      say(`  terminal did not post ${p.name}: ${t.msg}`);
+      if (/NO VACANT/.test(t.msg)) { s.talkTo(p); converse(null, (ch) => { const i = label(ch, /full tonight/); return i >= 0 ? i : 0; }); say(`  turned ${p.name} away (full)`); if (!s.noVacancy) s.toggleVacancy(); }
+      return;
+    }
     say(`checked in ${p.name} -> ${(p.groupRooms || [p.ci.room]).join(',')}  (${p.stay.pay})`);
     // payment
     for (let loop = 0; loop < 8 && p.ci.stage !== 'key' && p.ci.stage !== 'done'; loop++) {
@@ -103,7 +112,7 @@ const result = await T.ev(async (opts) => {
     if (p.ci.stage !== 'key') { say(`  payment stuck at ${p.ci.stage} for ${p.name}`); return; }
     fetchKeys(p);
     s.talkTo(p);
-    converse();
+    converse(null, (ch) => { const want = p.groupRooms ? -1 : ch.findIndex((c) => c.label === `(Hand over key ${p.ci.room}.)`); const any = ch.findIndex((c) => /Hand over/.test(c.label)); return want >= 0 && !(opts.sloppy && p._sloppyKey && !p._sloppyUsed && (p._sloppyUsed = true)) ? want : any >= 0 ? any : 0; });
     if (opts.trace) say(`  after key: stage ${p.ci.stage} queue=[${p.queue.map((a) => a.kind).join(',')}] act=${p.act && p.act.kind} held=${s.g.player.held.map((h) => h.kind + (h.room || '')).join(',')}`);
     if (s.desk.line.includes(p)) say(`  ${p.name} still at desk, stage ${p.ci.stage}`);
   }
@@ -144,7 +153,8 @@ const result = await T.ev(async (opts) => {
 
   function wakeUps() {
     for (const w of s.wakeups.due(s.clock.min)) {
-      if (opts.sloppy && Math.random() < 0.3) continue;
+      if (w._sloppy === undefined) w._sloppy = !!opts.sloppy && Math.random() < 0.4;
+      if (w._sloppy) continue;
       const { wakeCall } = window.__calls || {};
       const p = s.npcs.find(w.who);
       s.wakeDone(w, p);
@@ -198,6 +208,7 @@ const result = await T.ev(async (opts) => {
     if (!B.coffee.coffee.brewing && B.coffee.coffee.level < 0.25) { give('coffee'); s.useStation('coffee'); say('brewed coffee'); }
     if (!B.coffee.decaf.brewing && B.coffee.decaf.level < 0.1) { give('decaf'); s.useStation('decaf'); say('brewed decaf'); }
     if (B.juice.level < 0.2) { give('oj'); s.useStation('juice'); }
+    if (B.milk.level < 0.2) { give('milk'); s.useStation('cereal'); }
     for (const [st, k] of [['pastry', 'muffins'], ['bagels', 'bagels'], ['cereal', 'cereal'], ['fruit', 'fruit']]) if (B.trays[st] < 3) { give(k); s.useStation(st); }
     if (B.waffle.batter < 0.1) { give('waffleMix'); s.useStation('waffle'); }
     if (!B.waffle.on && B.waffle.batter > 0.1) s.useStation('waffle');
@@ -224,6 +235,14 @@ const result = await T.ev(async (opts) => {
   const snapshot = () => say('SNAP ' + s.npcs.list.filter((p) => !p.gone && p.kind !== 'staff').map((p) => `${p.name.split(' ')[0]}${p.room ? '(' + p.room + ')' : ''}:${p.act ? p.act.kind : '-'}${p.asleep ? 'z' : ''}${p.hidden ? 'h' : ''}${p.path ? '[' + p.pathI + '/' + p.path.length + ']' : ''}@${p.x.toFixed(0)},${p.z.toFixed(0)}`).join(' '));
   let ticks = 0;
   const maxTicks = 400000;
+  const reports = [];
+  const nShifts = Number(opts.shifts || 1);
+  for (let shiftI = 0; shiftI < nShifts; shiftI++) {
+  if (shiftI > 0) {
+    g.ui.hidePanel(); g.toTitle(); g.beginShift(true); s = g.shift; s.closeOverlay();
+    say(`===== SHIFT ${s.memory.shiftNo}: ${s.clock.dayLabel()} group=${s.director.variant.group} in-house=${s.npcs.list.filter((p) => p.inHouse).map((p) => p.name.split(' ')[0] + '(' + p.room + ')').join(' ')}`);
+  }
+  ticks = 0;
   while (!s.shiftOver && s.clock.min < endAt && ticks < maxTicks) {
     try {
       park();
@@ -256,6 +275,8 @@ const result = await T.ev(async (opts) => {
     }
     ticks++;
   }
+  reports.push({ day: s.clock.dayLabel(), group: s.director.variant.group, checkins: s.stats.checkins, checkouts: s.stats.checkouts, calls: s.stats.calls, served: { ...s.breakfast.served }, shortages: { ...s.breakfast.shortages }, pots: s.stats.pots, note: (g.ui.el.panelBody.innerText || '').split('Tonight, on the desk:')[1] || '' });
+  }
   const st = s.stats;
   return {
     log, errs, ticks, end: s.clock.label(), over: s.shiftOver, state: g.state,
@@ -264,6 +285,7 @@ const result = await T.ev(async (opts) => {
     desk: s.desk.line.map((p) => `${p.name}:${p.deskReason}:${p.ci ? p.ci.stage : ''}`),
     stuck: s.npcs.list.filter((p) => !p.hidden && p.stuckT > 2).map((p) => `${p.name}@${p.x.toFixed(1)},${p.z.toFixed(1)} ${p.act && p.act.kind}`),
     openTasks: s.tasks.open().map((t) => t.text),
+    reports,
     note: g.ui.el.panelBody ? g.ui.el.panelBody.innerText.slice(0, 1800) : '',
   };
 }, args);

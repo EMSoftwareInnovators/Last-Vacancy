@@ -24,7 +24,7 @@ import { money } from '../dialogue/runner.js';
 import { cardExpired } from '../dialogue/desk.js';
 import { makeItem } from '../sim/items.js';
 
-const W = 60;
+const W = 58;
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const pad = (s, n) => { s = String(s); return s.length >= n ? s.slice(0, n) : s + ' '.repeat(n - s.length); };
 const rpad = (s, n) => { s = String(s); return s.length >= n ? s.slice(0, n) : ' '.repeat(n - s.length) + s; };
@@ -124,11 +124,19 @@ export class Terminal {
     let list = s.rooms.all().filter((st) => s.rooms.sellable(st) || (f.res && f.res.room === st.no && st.sys === 'RS'));
     if (f.group) {
       const n = f.group.rooms;
+      const blocked = f.res && f.res.block ? f.res.block.filter((no) => { const st = s.rooms.get(no); return st.sys === 'RS' && !st.guest; }) : [];
+      list = list.concat(blocked.map((no) => s.rooms.get(no)).filter((st) => !list.includes(st)));
       const down = list.filter((st) => st.lv === 0 && !st.def.traits.includes('poolside'));
       const sets = [];
       const pool = down.length >= n ? down : list;
       const sorted = pool.slice().sort((a, b) => Number(a.no) - Number(b.no));
       for (let i = 0; i + n <= sorted.length && sets.length < 5; i++) sets.push(sorted.slice(i, i + n).map((st) => st.no));
+      if (blocked.length >= n) sets.unshift(blocked.slice(0, n));
+      else if (blocked.length) {
+        // the block, topped up with whatever is clean
+        const extra = list.filter((st) => !blocked.includes(st.no)).map((st) => st.no).slice(0, n - blocked.length);
+        if (blocked.length + extra.length >= n) sets.unshift(blocked.concat(extra));
+      }
       return sets;
     }
     const score = (st) => {
@@ -197,6 +205,7 @@ export class Terminal {
         rateCode: rate, rate: nightly(r.beds, pp, rate, acct), pay, account: p.stay.account || null, at: s.clock.min,
       });
       fo.beds = r.beds; fo.accountObj = acct;
+      if (f.group) fo.groupId = f.group.id || 'CREW';
       s.ledger.recharge(fo, s.clock.min);
       s.rooms.register(no, p, pp);
       s.rooms.get(no).reservedFor = null;
@@ -231,7 +240,7 @@ export class Terminal {
     const rateAmt = r0 ? nightly(r0.beds, f.group ? 1 : (f.party || 1), f.rate || 'RACK', acct) : 0;
     const total = rooms.reduce((n, no) => n + withTax(nightly(s.rooms.def(no).beds, f.group ? 1 : (f.party || 1), f.rate || 'RACK', acct)) * (f.nights || 1), 0);
     out.push(`  NAME ........ ${k.name ? span('hi', p.name.toUpperCase()) : span('warn blink', '??? -- ASK THE GUEST')}`);
-    out.push(`  RESERVATION . ${f.res ? span('hi', `FOUND  ${f.res.code}  ${f.res.note || ''}`) : (k.reservation ? 'NONE ON FILE' : span('dim', 'not asked'))}`);
+    out.push(`  RESERVATION . ${f.res ? span('hi', `FOUND ${f.res.code} ${f.res.note || ''}`.slice(0, 43)) : (k.reservation ? 'NONE ON FILE' : span('dim', 'not asked'))}`);
     if (f.group) out.push(`  GROUP ....... ${span('hi', `${f.group.name} -- ${f.group.rooms} ROOMS`)}`);
     out.push(`${mark('party')} PARTY ....... ${v(f.party, f.party)}`);
     out.push(`${mark('nights')} NIGHTS ...... ${v(f.nights, f.nights)}`);
@@ -240,10 +249,10 @@ export class Terminal {
     out.push(`${mark('rate')} RATE ........ ${f.rate === null ? span('warn', '?  (RACK)') : esc(f.rate)}   ${rooms.length ? esc(money(rateAmt)) + ' + TAX' : ''}`);
     out.push(`${mark('pay')} PAY ......... ${v(f.pay, f.pay === 'TC' ? "TRAV CHK" : f.pay)}`);
     if (!rooms.length) out.push(`${mark('room')} ROOM ........ ${span('warn', 'NO VACANT CLEAN ROOMS')}`);
-    else if (f.group) out.push(`${mark('room')} ROOMS ....... ${span('inv', ` &lt; ${rooms.join(' ')} &gt; `)}`);
+    else if (f.group) out.push(`${mark('room')} ROOMS ....... ${span('inv', ` < ${rooms.join(' ')} > `)}`);
     else {
       const st = s.rooms.get(rooms[0]);
-      out.push(`${mark('room')} ROOM ........ ${span('inv', ` &lt; ${rooms[0]} &gt; `)} ${esc(s.rooms.describe(rooms[0]))}${st.sys === 'RS' ? span('warn', ' RSVD') : ''}`);
+      out.push(`${mark('room')} ROOM ........ ${span('inv', ` < ${rooms[0]} > `)} ${esc(s.rooms.describe(rooms[0]).slice(0, 34))}${st.sys === 'RS' ? span('warn', ' RSVD') : ''}`);
       out.push(`                ${span('dim', pad(r0.note || '', 44))}`);
     }
     out.push(line());
@@ -271,10 +280,15 @@ export class Terminal {
   }
   doCheckout(f) {
     const s = this.s;
-    if (this.confirmCo !== f.id) { this.confirmCo = f.id; this.msg = `CHECK OUT ${f.room} ${f.name.toUpperCase()}? BAL ${money(s.ledger.balance(f))}  [ENTER] TO CONFIRM`; return; }
+    const block = f.groupId ? s.ledger.folios.filter((x) => x.open && x.groupId === f.groupId) : [f];
+    if (this.confirmCo !== f.id) {
+      this.confirmCo = f.id;
+      this.msg = block.length > 1 ? `CHECK OUT THE WHOLE BLOCK (${block.length} RMS)?  [ENTER] TO CONFIRM` : `CHECK OUT ${f.room} ${f.name.toUpperCase()}? BAL ${money(s.ledger.balance(f))}  [ENTER] TO CONFIRM`;
+      return;
+    }
     this.confirmCo = null;
-    s.checkOutFolio(f);
-    this.msg = `${f.room} CHECKED OUT. RECEIPT PRINTING. FLIP THE TAB ON THE RACK.`;
+    for (const x of block) s.checkOutFolio(x, block.length > 1 && x !== block[0]);
+    this.msg = block.length > 1 ? `${block.length} ROOMS CHECKED OUT. ONE RECEIPT. FLIP THE TABS.` : `${f.room} CHECKED OUT. RECEIPT PRINTING. FLIP THE TAB ON THE RACK.`;
     s.g.sound.printer(8);
     this.sel = 0;
   }
@@ -493,7 +507,7 @@ export class Terminal {
     const s = this.s;
     const d = s.clock.date;
     const dt = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate() + (s.clock.min >= 1440 ? 1 : 0)).padStart(2, '0')}/97`;
-    return `${span('inv', pad(` STARLITE MOTOR LODGE     PROPERTY SYSTEM v2.4   ${dt} ${rpad(s.clock.label(), 8)}`, W))}\n ${span('hi', title)}\n${line()}`;
+    return `${span('inv', pad(` STARLITE MOTOR LODGE  PROP SYS v2.4  ${dt}  ${rpad(s.clock.label(), 8)}`, W))}\n ${span('hi', title)}\n${line()}`;
   }
   foot(t) { return `${line()}\n${span('dim', ` ${t}`)}`; }
 

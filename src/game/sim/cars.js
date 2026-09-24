@@ -25,6 +25,8 @@ export class Cars {
     this.meshes = {};
     this.trafficT = 2;
     this.solids = [];
+    // the stalls are shared layout data; tonight they start empty
+    for (const st of [...STALLS, ...OFFICE_STALLS, ...OVERFLOW]) st.taken = null;
   }
 
   mesh(color, kind, side) {
@@ -85,6 +87,18 @@ export class Cars {
   }
   stallNearOffice() {
     return this.freeStall(STALLS.slice().sort((a, b) => Math.hypot(a.x - 4, a.z) - Math.hypot(b.x - 4, b.z))) || this.freeStall(OVERFLOW) || OVERFLOW[0];
+  }
+
+  /** The motorcoach: through the gate and down the middle of the lot, where it fits. */
+  arriveBus(c, onPark) {
+    const st = { x: DRIVE.bus.x, z: DRIVE.bus.z, yaw: DRIVE.bus.yaw, lane: -3.4, bus: true };
+    const route = [
+      { x: DRIVE.enterFrom.x, z: DRIVE.laneWB }, { x: 18, z: DRIVE.laneWB }, { x: 12.5, z: -18.6 }, DRIVE.gate,
+      { x: 10.3, z: 3.0 }, { x: 3.4, z: 5.0 }, { x: DRIVE.bus.x, z: 8.0 }, { x: DRIVE.bus.x, z: DRIVE.bus.z },
+    ];
+    for (const o of OVERFLOW) if (o.x < 0 && o.z > 9) o.taken = o.taken || 'bus';
+    this.go(c, route, st, onPark);
+    c.x = DRIVE.enterFrom.x; c.z = DRIVE.laneWB; c.yaw = -Math.PI / 2;
   }
 
   /** Straight in off the highway to the stall in front of a room (a guest back from supper). */

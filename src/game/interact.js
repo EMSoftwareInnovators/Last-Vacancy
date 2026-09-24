@@ -67,6 +67,7 @@ export class Interact {
       prompt: () => (s.keyDrop.length ? `Empty the key drop (${s.keyDrop.length} key${s.keyDrop.length > 1 ? 's' : ''})` : 'Key drop (empty)'),
       use: () => s.emptyKeyDrop(),
     });
+    add({ id: 'vacancy', aabb: { x0: 4.2, x1: 4.55, y0: 1.2, y1: 1.6, z0: -7.0, z1: -6.85 }, prompt: () => (s.noVacancy ? 'Sign switch: turn NO VACANCY off' : 'Sign switch: light the NO in NO VACANCY'), use: () => s.toggleVacancy() });
     add({ id: 'stool', aabb: around(P.stool.x, P.stool.z, 0.25, 0, 0.8), prompt: () => (s.g.player.sitting ? 'Get up' : 'Sit on the stool'), use: () => s.toggleStool() });
     add({
       id: 'sign', aabb: { x0: 3.15, x1: 3.85, y0: 0.4, y1: 0.72, z0: DESK.z1 - 0.02, z1: DESK.z1 + 0.12 }, hold: 1.2,

@@ -70,7 +70,8 @@ export function checkinNode(s, p) {
     case 'system': return say(p, L(s, p, 'systemWait'), [
       reply('One second -- I\'m putting you in now.', () => null),
       reply('Remind me what you need?', () => say(p, `(you read it back) ${recap(p)}.`, [reply('Right. One second.', () => null)])),
-      ...askChoices(s, p, ci),
+      ...askChoices(s, p, ci).slice(0, 2),
+      ...(!p.group && !s.rooms.vacantClean().length ? [fullUp(s, p)] : []),
     ]);
     case 'pay': return payNode(s, p, ci);
     case 'cash': return cashNode(s, p, ci);
@@ -124,13 +125,30 @@ function askChoices(s, p, ci) {
 }
 
 function talkChoices(s, p, ci) {
-  const out = askChoices(s, p, ci);
+  const out = askChoices(s, p, ci).slice(0, 3);
   out.push(reply(out.length ? 'Let me get you in the system.' : 'All right -- let me get you in the system.', () => {
     ci.stage = 'system';
     s.onGuestToSystem(p);
     return null;
   }));
+  if (!p.group && !s.rooms.vacantClean().length) out.push(fullUp(s, p));
   return out;
+}
+
+/** No rooms. It happens. You say so nicely, and they go on to the Ramada. */
+function fullUp(s, p) {
+  return reply('I\'m sorry -- we\'re full tonight.', () => {
+    const free = s.rooms.vacantClean().length;
+    const res = s.director.reservationFor(p);
+    s.stats.turnedAway++;
+    if (free > 0) { s.stats.turnedAwayWithRooms++; s.log(`Turned ${p.name} away with ${free} clean room${free > 1 ? 's' : ''} on the rack.`, 'bad'); }
+    if (res) { s.stats.walkedReservation++; s.log(`Had no room for ${p.name}, who had a reservation.`, 'bad'); }
+    if (!s.noVacancy && !free) s.stats.noVacancyMiss++;
+    p.mood -= res ? 30 : 6;
+    s.finishDesk(p, 'turnedAway');
+    return say(p, res ? 'I have a reservation. I called. ...Where am I supposed to go?' : s.rng.pick(['Oh. Okay. Is there anything up the road?', 'Full. On a Thursday. Huh. Okay.', 'Well. Thanks anyway.']),
+      [reply(res ? 'I\'ll call the Ramada for you -- I\'m so sorry.' : 'The Ramada\'s twenty minutes up 71.', () => null)]);
+  });
 }
 
 /** An answer, plus whatever they volunteer about the room on the back of it. */
@@ -237,7 +255,7 @@ function tender(s, p, ci) {
     return handCash(s, p, ci, bills, L(s, p, 'handCash', bills));
   }
   if (payWith === 'CARD') {
-    const card = makeItem('card', { card: { ...st.card }, owner: p.id, folio: f.id });
+    const card = makeItem('card', { card: { ...st.card }, owner: p.id, folio: f.id, folios: (p.groupFolios || [f]).map((x) => x.id) });
     s.giveItem(card);
     ci.stage = 'card';
     s.g.sound.paper();
@@ -336,7 +354,7 @@ function cardNode(s, p, ci) {
       if (card) s.removeHeld(card);
       s.removeHeld(slip);
       s.ledger.slips.push({ folio: slip.folio, card: slip.card, amount: slip.amount, signed: true, expired: cardExpired(slip.card, s.clock), room: ci.folio.room, name: p.name });
-      s.ledger.pay(ci.folio, 'CARD', slip.amount, slip.card.type, s.clock.min);
+      for (const id of slip.folios || [slip.folio]) { const fo = s.ledger.folio(id); if (fo) s.ledger.pay(fo, 'CARD', s.ledger.balance(fo), slip.card.type, s.clock.min); }
       ci.stage = 'key';
       return say(p, `${L(s, p, 'sign')}\n\n(You tear off the customer copy, hand it back with the card, and drop the merchant copy in the box under the counter.)`, [reply('And your key --', () => keyNode(s, p, ci))]);
     }),
@@ -382,6 +400,9 @@ function keyNode(s, p, ci) {
   } else {
     for (const k of keys) {
       choices.push(reply(`(Hand over key ${k.room}.)`, () => {
+        if (k.from === p.id && k.room !== ci.room) {
+          return say(p, `That's the one I just gave you. ${k.room}. It doesn't open ${ci.room}.`, [reply('Right -- sorry.', () => keyNode(s, p, ci))]);
+        }
         s.removeHeld(k);
         s.g.sound.keys(0);
         p.keyFor = k.room;
@@ -449,8 +470,17 @@ export function checkoutNode(s, p) {
   const f = s.ledger.folioForRoom(p.room);
   if (co.stage === 'hello') {
     co.stage = 'printing';
-    // the key comes across the counter first
-    if (p.keyFor) {
+    // the key comes across the counter first -- or, for a group, a coffee can of them
+    if (p.groupRooms) {
+      for (const no of p.groupRooms) {
+        const st = s.rooms.get(no);
+        const out = 2 - st.keys;
+        for (let i = 0; i < out; i++) s.giveItem(makeItem('key', { room: no, from: p.id }), true);
+        const fo = s.ledger.folioForRoom(no); if (fo) fo.departed = true;
+      }
+      p.keyFor = null; p.extraKeys = [];
+      s.g.sound.keys(0);
+    } else if (p.keyFor) {
       s.giveItem(makeItem('key', { room: p.keyFor, from: p.id }));
       p.keyFor = null;
       s.g.sound.keys(0);
