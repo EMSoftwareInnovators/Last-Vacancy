@@ -30,7 +30,7 @@ const PAD_BUTTONS = {
   14: ['←', '←', 'x-d', 'p-d'], 15: ['→', '→', 'x-d', 'p-d'],
 };
 const CAPS = {
-  interact: 'E', confirm: 'E', back: 'ESC', pause: 'ESC', notes: 'TAB',
+  interact: 'E', confirm: 'E', back: 'Q', pause: 'ESC', notes: 'TAB',
   drop: 'G', wait: 'F', run: 'SHIFT',
   up: '↑', down: '↓', left: '←', right: '→',
 };

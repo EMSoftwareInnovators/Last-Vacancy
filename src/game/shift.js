@@ -170,8 +170,11 @@ export class Shift {
     if (state === ST.END) { this.updateEnd(); return; }
     const input = g.input;
 
-    // Escape backs out of whatever you are looking at, and pauses if nothing is open
-    if (input.hit('Escape') && (!this.mode || this.mode === 'talk' || this.mode === 'phone')) { g.pause(); return; }
+    /* Escape is pause, from anywhere, and nothing else. With the mouse held
+       the browser keeps the key for itself (the pause then comes from the
+       lost lock, see Game.lostLock), so no screen can count on hearing it:
+       Q, Backspace or B step away from the rack, the terminal and papers. */
+    if (input.hit('Escape')) { g.pause(); return; }
     if (input.hit('Tab') && !this.mode) { this.notesOpen = !this.notesOpen; g.sound.paper(); }
 
     /* ---- the clock ---- */
@@ -206,7 +209,7 @@ export class Shift {
         const wrap = document.querySelector('#paper .sheetwrap');
         if (wrap && input.hit('ArrowDown', 'KeyS')) wrap.scrollTop += wrap.clientHeight * 0.35;
         if (wrap && input.hit('ArrowUp', 'KeyW')) wrap.scrollTop -= wrap.clientHeight * 0.35;
-        if (input.hit('Escape', 'UiBack', 'KeyE', 'Enter', 'Space', 'Backspace') || (g.input.mousePressed[0] && g.input.locked)) this.closeOverlay();
+        if (input.hit('KeyQ', 'UiBack', 'KeyE', 'Enter', 'Space', 'Backspace') || (g.input.mousePressed[0] && g.input.locked)) this.closeOverlay();
         break;
       }
       case 'picker': if (!this.picker.handle(input)) this.closeOverlay(); else g.ui.showPaper(this.picker.render()); break;
@@ -1193,7 +1196,18 @@ export class Shift {
   }
   people() { return this.npcs.list.filter((p) => !p.hidden && !p.culled); }
   focus() { return this.mode; }
-  get heldFocus() { return !!this.mode; }
+  /** What the player had open when the shift paused, for the pause menu: its name, and whether Q steps away from it. */
+  get heldFocus() {
+    switch (this.mode) {
+      case 'board': return { name: 'the key rack', backOut: true };
+      case 'terminal': return { name: 'the terminal', backOut: true };
+      case 'paper': return { name: 'the paper', backOut: true };
+      case 'picker': return { name: `the ${this.picker.title.toLowerCase()}`, backOut: true };
+      case 'talk': return { name: 'the conversation' };
+      case 'phone': return { name: 'the phone' };
+      default: return null;
+    }
+  }
 
   collectDraws() {
     const g = this.g, draws = g.draws, M = g.world.dyn.items;

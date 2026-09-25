@@ -9,7 +9,7 @@ await T.page.keyboard.press('Enter');
 await T.wait(800);
 T.check('shift started', await T.ev(() => !!window.__game.shift && window.__game.state === 'PLAY'));
 T.check('note is open', await T.ev(() => window.__game.shift.mode === 'paper'));
-await T.page.keyboard.press('Escape');
+await T.page.keyboard.press('KeyQ');           // put June's note down
 await T.wait(200);
 T.check('note closed', await T.ev(() => window.__game.shift.mode === null));
 const out = await T.ev((mins) => {

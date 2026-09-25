@@ -15,7 +15,9 @@
      F5 NIGHT AUDIT  three in the morning: make the books close
 
    Arrow keys move, left and right change a value, ENTER does the
-   thing, ESC goes back. On a pad, the d-pad and the face buttons.
+   thing, Q (or Backspace) goes back. ESC is never back: with the mouse
+   held, the browser keeps that key for itself, so it only ever pauses.
+   On a pad, the d-pad and the face buttons.
    ============================================================ */
 import { nightly, withTax, ACCOUNTS, BANK, TAX } from '../sim/ledger.js';
 import { BED_LABEL } from '../world/layout.js';
@@ -56,7 +58,7 @@ export class Terminal {
     const up = i.hit('ArrowUp', 'KeyW'), down = i.hit('ArrowDown', 'KeyS');
     const left = i.hit('ArrowLeft', 'KeyA'), right = i.hit('ArrowRight', 'KeyD');
     const enter = i.hit('Enter', 'KeyE', 'Space');
-    const back = i.hit('Escape', 'UiBack', 'Backspace');
+    const back = i.hit('KeyQ', 'UiBack', 'Backspace');
     if (up || down || left || right || enter) s.g.sound.keyClick();
     switch (this.screen) {
       case 'main': {
@@ -227,7 +229,7 @@ export class Terminal {
       out.push('');
       if (f && f.posted) out.push(span('hi', `  ROOM ${f.posted.join(', ')} REGISTERED.`), '', '  Take the payment. Then the key off the rack.');
       else out.push('  NO GUEST WAITING TO BE ENTERED.', '', span('dim', '  Talk to the guest at the desk first: name, how many,'), span('dim', '  how long, smoking, beds, how they are paying.'), span('dim', '  Then come back here. [ENTER] refresh'));
-      out.push('', this.foot('[ESC] MAIN MENU'));
+      out.push('', this.foot('[Q] MAIN MENU'));
       return out.join('\n');
     }
     const p = f.p, k = p.known;
@@ -259,7 +261,7 @@ export class Terminal {
     out.push(`  TOTAL ${f.nights || 1} NIGHT(S)${rooms.length > 1 ? ` x ${rooms.length} RMS` : ''} ${'.'.repeat(20)} ${span('hi', money(total))}`);
     out.push(`${mark('post')} ${rows[this.sel] === 'post' ? span('inv', ' [ENTER] POST & PRINT REG CARD ') : '[ENTER] POST & PRINT REG CARD'}`);
     out.push(this.msg ? span('warn', `  ${this.msg}`) : '');
-    out.push(this.foot('↑↓ FIELD   ←→ CHANGE   [ESC] MAIN'));
+    out.push(this.foot('↑↓ FIELD   ←→ CHANGE   [Q] MAIN'));
     return out.join('\n');
   }
 
@@ -304,7 +306,7 @@ export class Terminal {
     if (!list.length) out.push('', '  NO OPEN FOLIOS.');
     while (out.length < 15) out.push('');
     out.push(this.msg ? span('warn', `  ${this.msg}`) : span('dim', '  KEY IN = KEY RETURNED OR IN THE DROP BOX'));
-    out.push(this.foot('↑↓ SELECT   [ENTER] CHECK OUT   [ESC] MAIN'));
+    out.push(this.foot('↑↓ SELECT   [ENTER] CHECK OUT   [Q] MAIN'));
     return out.join('\n');
   }
 
@@ -339,7 +341,7 @@ export class Terminal {
     out.push(`  ${span('hi', st.no)}  ${esc(st.def.note || '')}`);
     out.push(st.issues.size ? span('warn', `  ISSUES: ${[...st.issues].join(', ').toUpperCase()}`) : '');
     out.push(this.msg ? span('warn', `  ${this.msg}`) : span('dim', '  ←→ SET VC / VD / OUT OF ORDER (EMPTY ROOMS ONLY)'));
-    out.push(this.foot('↑↓ SELECT   [ESC] MAIN'));
+    out.push(this.foot('↑↓ SELECT   [Q] MAIN'));
     return out.join('\n');
   }
 
@@ -362,7 +364,7 @@ export class Terminal {
     if (fut.length) out.push(span('dim', `  TAKEN TONIGHT FOR LATER: ${fut.map((r) => `${r.name.toUpperCase()} (${r.forDay})`).join(', ')}`));
     while (out.length < 16) out.push('');
     out.push(this.msg ? span('warn', `  ${this.msg}`) : '');
-    out.push(this.foot('↑↓ SELECT   [ESC] MAIN'));
+    out.push(this.foot('↑↓ SELECT   [Q] MAIN'));
     return out.join('\n');
   }
 
@@ -482,7 +484,7 @@ export class Terminal {
     if (!s.clock.past(3, 0) && !A.results.length) {
       out.push('', '  THE AUDIT RUNS AT 3:00 AM.', '', span('dim', '  It checks tonight against itself: the rack, the drawer,'), span('dim', '  the card slips, the vouchers, the reservations that never'), span('dim', '  came. Then it posts the room revenue and rolls the date.'));
       while (out.length < 18) out.push('');
-      out.push(this.foot('[ESC] MAIN'));
+      out.push(this.foot('[Q] MAIN'));
       return out.join('\n');
     }
     const steps = this.auditSteps();
@@ -496,7 +498,7 @@ export class Terminal {
     if (show) for (const l of show.lines.filter(Boolean).slice(0, 7)) out.push(`  ${esc(l).slice(0, 180)}`);
     if (A.pending) out.push('', `  ${span('warn', A.pending.q)}`, `  ${A.pending.opts.map((o, i) => (i === A.pending.choice ? span('inv', ` ${o} `) : ` ${o} `)).join('   ')}`);
     while (out.length < 19) out.push('');
-    out.push(this.foot(A.done ? 'AUDIT COMPLETE.   [ESC] MAIN' : A.pending ? '←→ CHOOSE   [ENTER] CONFIRM' : '[ENTER] RUN NEXT STEP   [ESC] MAIN'));
+    out.push(this.foot(A.done ? 'AUDIT COMPLETE.   [Q] MAIN' : A.pending ? '←→ CHOOSE   [ENTER] CONFIRM' : '[ENTER] RUN NEXT STEP   [Q] MAIN'));
     return out.join('\n');
   }
 
@@ -529,7 +531,7 @@ export class Terminal {
     while (out.length < 17) out.push('');
     out.push(line());
     out.push(` OCC ${rpad(occ, 2)}/28   VAC CLN ${rpad(vc, 2)}   DIRTY ${rpad(vd, 2)}   O-O-O ${oo}   ARR DUE ${due}`);
-    out.push(this.foot('↑↓ + [ENTER], OR F1-F5 / 1-5     [ESC] STEP AWAY'));
+    out.push(this.foot('↑↓ + [ENTER], OR F1-F5 / 1-5     [Q] STEP AWAY'));
     return out.join('\n');
   }
 

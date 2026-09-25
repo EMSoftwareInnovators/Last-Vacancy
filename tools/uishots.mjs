@@ -9,7 +9,7 @@ await T.ev(() => { window.__game.sound.muted = true; });
 await T.page.keyboard.press('Enter');
 await T.wait(900);
 await shot('01-note');
-await T.page.keyboard.press('Escape');
+await T.page.keyboard.press('KeyQ');           // put June's note down
 await T.wait(200);
 // run until somebody is at the desk
 await T.ev(() => {

@@ -28,7 +28,7 @@ const faceGuest = async () => { const g = await ev(() => { const f = window.__ga
 await ev(() => { window.__game.sound.muted = true; });
 await key('Enter');
 await wait(900);
-await key('Escape');
+await key('KeyQ');
 await wait(200);
 check('note closed, playing', (await state()).mode === null);
 
@@ -77,7 +77,7 @@ await key('Enter'); await key('Enter'); await key('Enter');
 await wait(300);
 const posted = await ev((id) => window.__game.shift.npcs.find(id).ci.stage, guest.id);
 check(`[${round}] ` + 'ENTER posts the check-in', posted === 'pay', posted);
-await key('Escape'); await key('Escape');
+await key('KeyQ'); await key('KeyQ');
 await wait(200);
 check(`[${round}] ` + 'stepped away from the terminal', (await state()).mode === null);
 
@@ -124,7 +124,7 @@ check(`[${round}] ` + 'key rack open', (await state()).mode === 'board');
 await key('KeyE'); await wait(200);
 const held = await ev(() => window.__game.player.held.filter((h) => h.kind === 'key').map((h) => h.room));
 check(`[${round}] ` + 'took the key(s) the desk is waiting on', held.length > 0, held.join(','));
-await key('Escape'); await wait(200);
+await key('KeyQ'); await wait(200);
 
 // across the counter
 await faceGuest(); await wait(200);

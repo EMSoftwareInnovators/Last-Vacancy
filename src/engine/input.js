@@ -27,11 +27,10 @@ export const PAD_ACTIONS = {
      trigger as well, which is where sprint now lives -- and a sprint that
      also picks the highlighted reply is not a sprint. */
   confirm: { label: 'Select / interact', keys: ['PadA', 'KeyE', 'Enter', 'Space'], def: [0] },
-  /* B stands in for a back key of its own rather than for Escape. Escape
-     both backs out of a menu and pauses the shift, so while B spoke as
-     Escape it paused the game too -- there was no way for the play loop to
-     tell the two apart. The keyboard is unchanged: every screen that goes
-     back still tests Escape as well. */
+  /* B stands in for a back key of its own rather than for Escape, which
+     is pause and only pause. On the keyboard, back is Q (or Backspace):
+     while the mouse is held the browser keeps Escape for itself, so a
+     screen that waited on Escape to close never heard it. */
   back: { label: 'Back / cancel', keys: ['PadB', 'UiBack'], def: [1] },
   drop: { label: 'Put it down', keys: ['PadX', 'KeyG'], def: [2] },
   notes: { label: 'Notepad', keys: ['PadY', 'Tab'], def: [3] },
@@ -157,7 +156,6 @@ export class Input {
     this.mouse = [false, false, false];
     this.mousePressed = [false, false, false];
     this.locked = false;
-    this.blurT = -1e9;            // when the window last lost focus (performance.now)
     this.sensitivity = 0.0022;
     this.padSensitivity = 4.2;          // radians per second at full deflection
     this.invertY = false;
@@ -219,7 +217,6 @@ export class Input {
       this.down.delete(k); this.released.add(k);
     });
     addEventListener('blur', () => {
-      this.blurT = performance.now();
       this.down.clear(); this.mouse = [false, false, false];
       this._padDown.clear(); this.moveX = 0; this.moveZ = 0; this.lookX = 0; this.lookY = 0;
       this._nav.u = this._nav.d = this._nav.l = this._nav.r = 0;

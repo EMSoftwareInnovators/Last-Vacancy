@@ -36,7 +36,7 @@ export function binderHtml(s) {
       <li>No pets. No local checks. Pool closes at 10 &mdash; lock the gate.</li>
       <li>Wake-ups: write it on the sheet, and then CALL.</li>
       <li>Audit at 3. Coffee by 5:45. Breakfast out at 6.</li>
-    </ul><p class="foot">[ESC] close</p></div>`;
+    </ul><p class="foot">${s.g.ui.keyHint('back')} close</p></div>`;
 }
 
 export function regCardsHtml(s) {
@@ -44,7 +44,7 @@ export function regCardsHtml(s) {
   const rows = f.map((x) => `<tr><td><b>${x.room}</b></td><td>${esc(x.name)}</td><td>${x.party}</td><td>${x.nights}</td><td>${esc(x.pay)}</td><td>${s.rooms.get(x.room) && s.rooms.get(x.room).noDisclose ? '<span class="bad">DO NOT DISCLOSE</span>' : ''}</td></tr>`).join('');
   return `<div class="sheet"><h2>REGISTRATION CARDS &mdash; IN HOUSE</h2>
     <table><tr><th>RM</th><th>NAME</th><th>PTY</th><th>NTS</th><th>PAY</th><th></th></tr>${rows || '<tr><td colspan="6" class="quiet">(empty box)</td></tr>'}</table>
-    <p class="foot">For your eyes. Not the caller's. [ESC] close</p></div>`;
+    <p class="foot">For your eyes. Not the caller's. &nbsp;${s.g.ui.keyHint('back')} close</p></div>`;
 }
 
 export function newsHtml(s) {
@@ -56,7 +56,7 @@ export function newsHtml(s) {
   return `<div class="sheet news"><h1>The Delphine Ledger</h1>
     <p class="quiet" style="text-align:center">${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, 1997 &middot; 35&cent;</p>
     <h3>${esc(a.h)}</h3><p>${esc(a.sub)}</p><h3>${esc(b.h)}</h3><p>${esc(b.sub)}</p><h3>${esc(c.h)}</h3><p>${esc(c.sub)}</p>
-    <p class="quiet">${esc(INSIDE[k % INSIDE.length])}</p><p class="foot">[ESC] fold it back up</p></div>`;
+    <p class="quiet">${esc(INSIDE[k % INSIDE.length])}</p><p class="foot">${s.g.ui.keyHint('back')} fold it back up</p></div>`;
 }
 
 /* ============================================================
@@ -67,7 +67,7 @@ export class Picker {
   constructor(shift, title, items, note) { this.s = shift; this.title = title; this.items = items; this.sel = 0; this.note = note || ''; this.msg = ''; }
   handle(i) {
     const n = this.items.length;
-    if (i.hit('Escape', 'UiBack', 'Backspace')) return false;
+    if (i.hit('KeyQ', 'UiBack', 'Backspace')) return false;
     if (i.hit('ArrowUp', 'KeyW')) { this.sel = (this.sel + n - 1) % n; this.s.g.sound.uiMove(); this.msg = ''; }
     if (i.hit('ArrowDown', 'KeyS')) { this.sel = (this.sel + 1) % n; this.s.g.sound.uiMove(); this.msg = ''; }
     const d = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'].findIndex((k) => i.hit(k));

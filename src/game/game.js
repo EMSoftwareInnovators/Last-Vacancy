@@ -68,13 +68,11 @@ export class Game {
 
     /* The mouse and the browser. While the mouse is held, Firefox and Chrome
        keep Escape for themselves: it lets go of the mouse and the page never
-       hears the key. So a lock that goes away without our asking, with the
-       window still in front, was the player's Escape, and it is played into
-       the next frame as one: the rack, the terminal, a note and the world all
-       get it the way they get any Escape (see lostLock). Escape does not count
-       as a gesture, so nothing can take the mouse back until the next real key
-       or click: take it on that one, from inside the event, and say so on
-       screen meanwhile. */
+       hears the key. So Escape is pause and nothing else, and a lock that goes
+       away without our asking is that pause (see lostLock); every screen that
+       backs out does it on Q instead. Escape does not count as a gesture, so
+       nothing can take the mouse back until the next real key or click: take
+       it on that one, from inside the event, and say so on screen meanwhile. */
     this.input.onLockChange = (locked) => {
       if (locked) { this.wantLock = true; return; }
       if (performance.now() - (this._dropT || -1e9) < 600) return;   // we let go of it ourselves
@@ -83,8 +81,9 @@ export class Game {
     this.input.onGesture = (code) => {
       if (code === 'Escape') {
         const now = performance.now();
-        // a browser that eats the key and then hands it over anyway: one Escape, not two
-        if (now - (this._fakeEscT || -1e9) < 150) this.input.pressed.delete('Escape');
+        // the browser let go of the mouse, we paused on that, and now it hands the key over too:
+        // one Escape, not a pause and an unpause
+        if (now - (this._lostPauseT || -1e9) < 150) this.input.pressed.delete('Escape');
         this._escT = now;
         return;
       }
@@ -170,26 +169,23 @@ export class Game {
     if (i.hit('Enter', 'KeyE', 'Space')) return true;
     return !i.bindsFor('confirm').length && i.hit('PadAny');
   }
-  backHit() { return this.input.hit('Escape', 'UiBack'); }
+  backHit() { return this.input.hit('Escape', 'UiBack', 'KeyQ', 'Backspace'); }
   confirmOrClick() { return this.confirmHit() || this.input.mousePressed[0]; }
   quietly(fn) { try { fn(); } catch (err) { this._audioDead = err; } }
   grabLock() { this.input.requestLock(); }
   dropLock() { this._dropT = performance.now(); this.input.exitLock(); }
 
-  /* The mouse was let go and we did not ask (see boot). Settled a frame
-     later, so a browser that also passes the Escape on has had its say. */
+  /* The mouse was let go and we did not ask (see boot): Escape, or another
+     window. Either way the shift stops, whatever is open; resuming puts you
+     back in front of it. Settled a frame later, so a browser that also
+     passes the Escape on has had its say (the frame pauses on that). */
   lostLock() {
     const t = this._lostT;
     this._lostT = 0;
-    if (Math.abs(t - (this._escT || -1e9)) < 150) return;          // the page heard that Escape itself
-    const away = document.hidden || !document.hasFocus() || t - this.input.blurT < 500;
-    if (away) {                                                        // alt-tab, another window: just stop
-      if (this.state === ST.PLAY && !this.focus()) this.pause();
-      return;
-    }
+    if (Math.abs(t - (this._escT || -1e9)) < 150) return;
     if (this.state !== ST.PLAY) return;
-    this.input.pressed.add('Escape');
-    this._fakeEscT = performance.now();
+    this.pause();
+    this._lostPauseT = performance.now();
   }
 
   onSchemeChanged() {
@@ -363,11 +359,13 @@ export class Game {
   }
   showPauseMenu() {
     this.state = ST.PAUSE;
-    const held = this.shift && this.shift.heldFocus;
+    const held = this.shift ? this.shift.heldFocus : null;
+    // paused from the rack, the terminal or a paper: say how to step away from it, since Escape won't
+    const away = held && held.backOut ? `<p class="pad-foot">${this.ui.keyHint('back')} steps away from ${held.name} &nbsp;&middot;&nbsp; ${this.ui.keyHint('pause')} is always pause</p>` : '';
     this.ui.showPanel(`<h2>SHIFT PAUSED</h2>
-      <ul><li class="opt sel">${held ? 'Back to what you were doing' : 'Back to the desk'}</li>
+      <ul><li class="opt sel">${held ? `Back to ${held.name}` : 'Back to the desk'}</li>
       <li class="opt">How to work the desk</li><li class="opt">Options</li><li class="opt">Quit to title</li></ul>
-      <p class="pad-foot">${this.ui.keyHint('confirm')} select &nbsp;&middot;&nbsp; ${this.ui.keyHint('up')}${this.ui.keyHint('down')} move</p>
+      <p class="pad-foot">${this.ui.keyHint('confirm')} select &nbsp;&middot;&nbsp; ${this.ui.keyHint('up')}${this.ui.keyHint('down')} move</p>${away}
       <p class="pad-foot quiet">The motel saves when you hand the shift over at seven.</p>`);
     this.ui.panelSelect(this.pauseSel || 0);
   }

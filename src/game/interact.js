@@ -84,7 +84,7 @@ export class Interact {
       use: () => {
         const pk = s.heldOf('packet');
         if (pk) { s.removeHeld(pk); s.flags.packetLeft = true; s.g.sound.paper(); s.toast('On her desk, square to the corner, the way she likes it.', 'good'); return; }
-        s.openPaper(noteHtml(s.juneLines, { date: 'on the back of a Sysco invoice', foot: '[ESC] put it down' }));
+        s.openPaper(noteHtml(s.juneLines, { date: 'on the back of a Sysco invoice', foot: `${s.g.ui.keyHint('back')} put it down` }));
       },
     });
     add({ id: 'breakerOffice', aabb: { x0: 2.0, x1: 2.4, y0: 0.55, y1: 1.45, z0: -7.2, z1: -7.0 }, prompt: () => 'Breaker panel (office)', use: () => s.toast('Office breakers. All on. Leave them that way.') });

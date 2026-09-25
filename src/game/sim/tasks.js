@@ -91,7 +91,7 @@ export class WakeSheet {
     }).join('');
     return `<div class="sheet wake"><h2>WAKE-UP CALLS &mdash; ${esc(this.s.clock.dayLabel())}</h2>
       <table><tr><th>RM</th><th>TIME</th><th>NAME</th><th>NOTE</th><th></th></tr>${rows || '<tr><td colspan="5" class="quiet">(nobody yet)</td></tr>'}</table>
-      <p class="foot">Call the room from the desk phone when it is time. [ESC] put it down</p></div>`;
+      <p class="foot">Call the room from the desk phone when it is time. &nbsp;${this.s.g.ui.keyHint('back')} put it down</p></div>`;
   }
 }
 

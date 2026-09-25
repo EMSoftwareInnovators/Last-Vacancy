@@ -9,7 +9,7 @@ const T = await launch();
 await T.ev(() => { window.__game.sound.muted = true; });
 await T.page.keyboard.press('Enter');
 await T.wait(800);
-await T.page.keyboard.press('Escape');
+await T.page.keyboard.press('KeyQ');           // put June's note down
 await T.wait(100);
 
 const result = await T.ev(async (opts) => {

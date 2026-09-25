@@ -30,14 +30,16 @@ Or open `index.html` through any static file server. `npm run app` runs it in El
 | Use / talk / take | E | A / ✕ |
 | Pick a reply | 1–6, or arrows + E | d-pad + A |
 | Put something down / flip a tab on the rack | G | X / □ |
+| Step away from the rack, the terminal, a paper or a shelf | Q (or Backspace) | B / ○ |
 | Notepad | Tab | Y / △ |
 | Sit on the stool (the night goes faster) | F | RB / R1 |
 | Pause | Esc | Start |
-| Terminal | F1–F5 or 1–5, arrows, ENTER, ESC | d-pad, A, B |
+| Terminal | F1–F5 or 1–5, arrows, ENTER, Q to go back | d-pad, A, B |
 
-Every binding can be moved on the controller screen in Options; sensitivity, invert Y,
-volumes, text speed, subtitles and their size, resolution and the screen effects are all
-saved.
+Escape only ever pauses: while the mouse is held, browsers keep that key for themselves, so
+nothing in the motel waits on it. Every binding can be moved on the controller screen in
+Options; sensitivity, invert Y, volumes, text speed, subtitles and their size, resolution and
+the screen effects are all saved.
 
 **A check-in**: talk to the guest and ask what you need (name, how many, how long, smoking,
 beds, how they are paying) → the terminal, **F1**, check the form, ENTER → tell them the

@@ -114,7 +114,7 @@ export function howToHtml() {
   <div class="keys">
     <ul>${key('move', 'walk')}${key('run', 'hurry')}${key('look', 'look')}${key('pause', 'pause')}</ul>
     <ul>${key('interact', 'use / talk / take')}${onPad ? key('up', 'pick a reply') : `<li class="plain"><span class="key">1-6</span> pick a reply</li>`}${key('notes', 'your notepad')}</ul>
-    <ul>${key('drop', 'put it down')}${key('wait', 'sit, let time pass')}</ul>
+    <ul>${key('drop', 'put it down')}${key('wait', 'sit, let time pass')}${key('back', 'step away, go back')}</ul>
   </div>
   <div class="cols">
     <ul>

@@ -56,7 +56,7 @@ export class Board {
 
   handle(i) {
     const s = this.s;
-    if (i.hit('Escape', 'UiBack', 'Backspace')) return false;
+    if (i.hit('KeyQ', 'UiBack', 'Backspace')) return false;
     let moved = false;
     if (i.hit('ArrowUp', 'KeyW')) { this.r = (this.r + ROWS.length - 1) % ROWS.length; moved = true; }
     if (i.hit('ArrowDown', 'KeyS')) { this.r = (this.r + 1) % ROWS.length; moved = true; }
@@ -132,7 +132,8 @@ export class Board {
       + (want.length ? `<div class="k">At the desk: ${want.slice(0, 4).map((w) => `${esc(w.who.name.split(' ').slice(-1)[0])} &rarr; ${w.room}`).join(', ')}</div>` : '')
       + (held.length ? `<div>In your hand: key${held.length > 1 ? 's' : ''} ${held.join(', ')}</div>` : '')
       + (this.msg ? `<div class="k">${esc(this.msg)}</div>` : '')
-      + `<div class="opts"><span>${s.g.ui.keyHint('interact')} take / hang key</span><span>${s.g.ui.keyHint('drop')} flip the tab</span><span>${s.g.ui.keyHint('back')} step away</span></div>`;
+      + `<div class="opts"><span>${s.g.ui.keyHint('interact')} take / hang key</span><span>${s.g.ui.keyHint('drop')} flip the tab</span>`
+      + `<span class="away">${s.g.ui.keyHint('back')} step away &nbsp;&middot;&nbsp; ${s.g.ui.keyHint('pause')} pause</span></div>`;
     return { grid, info };
   }
 }
