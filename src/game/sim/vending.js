@@ -27,7 +27,7 @@ import { VENDING } from '../world/layout.js';
 
 /* What is in the machines. `pop` is how often somebody wants it. */
 export const PRODUCTS = {
-  coke: { label: 'Coca-Cola', short: 'COKE', machine: 'soda', price: 0.6, pop: 6 },
+  coke: { label: 'Coca-Cola', short: 'COKE', spoken: 'Coke', machine: 'soda', price: 0.6, pop: 6 },
   diet: { label: 'Diet Coke', short: 'DIET COKE', machine: 'soda', price: 0.6, pop: 3 },
   sprite: { label: 'Sprite', short: 'SPRITE', machine: 'soda', price: 0.6, pop: 3 },
   drpep: { label: 'Dr Pepper', short: 'DR PEPPER', machine: 'soda', price: 0.6, pop: 4 },

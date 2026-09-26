@@ -9,7 +9,7 @@ mkdirSync(SP, { recursive: true });
 const T = await launch();
 const { page, ev, wait, check } = T;
 const key = async (k) => { await page.keyboard.press(k); await wait(140); };
-const st = () => ev(() => { const s = window.__game.shift, t = s.training, j = t && t.june; return { mode: s.mode, phase: t && t.phase, i: t && t.i, stop: t && (t.phase === 'tour') ? (window.__tour || [])[t.i] : null, arrived: t && t.arrived, jx: j && +j.x.toFixed(2), jz: j && +j.z.toFixed(2), clock: s.clock.label(), min: s.clock.min, hold: !!s.clock.hold, obj: document.getElementById('objective').innerText, dlg: s.runner.node ? s.runner.node.text.slice(0, 70) : null, choices: s.runner.node && s.runner.node.choices ? s.runner.node.choices.map((c) => c.label) : null }; });
+const st = () => ev(() => { const s = window.__game.shift, t = s.training, j = t && t.june; return { mode: s.mode, phase: t && t.phase, i: t && t.i, stop: t && (t.phase === 'tour') ? (window.__tour || [])[t.i] : null, arrived: t && t.arrived, waiting: t && t.waiting, jx: j && +j.x.toFixed(2), jz: j && +j.z.toFixed(2), clock: s.clock.label(), min: s.clock.min, hold: !!s.clock.hold, obj: document.getElementById('objective').innerText, dlg: s.runner.node ? s.runner.node.text.slice(0, 70) : null, choices: s.runner.node && s.runner.node.choices ? s.runner.node.choices.map((c) => c.label) : null }; });
 await ev(async () => { window.__game.sound.muted = true; const m = await import('/src/game/dialogue/june.js'); window.__tour = m.TOUR.map((x) => x.id); });
 await key('Enter'); await wait(900);
 let s = await st();
@@ -17,23 +17,43 @@ check('night one opens with June talking, the clock held', s.mode === 'talk' && 
 await page.screenshot({ path: `${SP}/tour-intro.png` });
 /** Pick a reply by text (or the first), until the talk ends. */
 const talkThrough = async (re, max = 8) => { for (let n = 0; n < max; n++) { s = await st(); if (s.mode !== 'talk') return; const i = re ? Math.max(0, s.choices.findIndex((c) => re.test(c))) : 0; await key(`Digit${i + 1}`); await wait(120); } };
+/** Walk behind her the way a player does, a couple of steps back, until she stops at the next stop. */
+const followJune = async () => {
+  for (let n = 0; n < 600; n++) {
+    s = await st();
+    if (s.arrived || s.mode) break;
+    await ev(() => { const s = window.__game.shift, j = s.training.june, p = s.g.player; p.x = j.x - Math.sin(j.yaw) * 2.0; p.z = j.z - Math.cos(j.yaw) * 2.0; p.lv = j.lv || 0; p.vx = p.vz = 0; });
+    await wait(100);
+  }
+};
 const goNearJune = async () => {
-  for (let n = 0; n < 400; n++) { s = await st(); if (s.arrived || s.mode) break; await wait(100); }
+  await followJune();
   await ev(() => { const s = window.__game.shift, j = s.training.june, p = s.g.player; const a = Math.atan2(p.x - j.x, p.z - j.z); p.x = j.x + Math.sin(a) * 1.8; p.z = j.z + Math.cos(a) * 1.8; p.lv = j.lv || 0; p.vx = p.vz = 0; p.yaw = Math.atan2(j.x - p.x, j.z - p.z); });
   for (let n = 0; n < 30; n++) { s = await st(); if (s.mode === 'talk') break; await wait(100); }
 };
 await talkThrough(/Lead the way|Every dollar|rack is the truth|Follow/);
-const seen = [];
+// stay behind the desk while she goes through to the back office (a short walk: she does not need to wait)
+for (let n = 0; n < 300 && !(await st()).arrived; n++) await wait(100);
+// close to her through the back office wall is not next to her
+await ev(() => { const p = window.__game.player; p.x = 4.3; p.z = -6.6; p.lv = 0; p.yaw = Math.PI; });
+await wait(1200);
+s = await st();
+check('three meters away through a wall, she does not start talking', s.mode !== 'talk' && s.arrived, `${s.mode} | ${s.obj}`);
+await ev(() => { const p = window.__game.player; p.x = 4.3; p.z = -8.4; p.yaw = Math.PI; });
+for (let n = 0; n < 20 && (await st()).mode !== 'talk'; n++) await wait(100);
+check('next to her in the back office, she starts', (await st()).mode === 'talk');
+await talkThrough();
+const seen = ['back'];
 for (let guard = 0; guard < 30; guard++) {
   s = await st();
   if (s.phase !== 'tour') break;
   seen.push(s.stop);
   if (s.stop === 'coke') {
-    // the supply room, a case of Coke, the machine
-    await ev(() => { const p = window.__game.player; p.x = 3.0; p.z = 33.2; p.yaw = -Math.PI / 2; p.pitch = -0.1; });
+    // the supply room: the SODA shelf opens on what the machine needs; then one E on the machine loads it
+    await ev(() => { const p = window.__game.player; p.x = 3.4; p.z = 32.55; p.yaw = -Math.PI / 2; p.pitch = -0.2; });
     await wait(300); await key('KeyE'); await key('KeyE'); await key('KeyQ');
     await ev(() => { const p = window.__game.player; p.x = 6.05; p.z = 32.7; p.yaw = 0; p.pitch = -0.05; });
-    await wait(300); await key('KeyE'); await key('KeyE'); await key('KeyQ');
+    await wait(300); await key('KeyE');
     await wait(300);
     continue;
   }
@@ -47,6 +67,14 @@ for (let guard = 0; guard < 30; guard++) {
     await ev(() => { const p = window.__game.player; p.x = 4.4; p.z = -5.5; p.yaw = Math.atan2(5.16 - 4.4, -4.72 + 5.5); p.pitch = Math.atan2(1.25 - 1.62, Math.hypot(0.76, 0.78)); });
     await wait(300); await key('KeyE'); await wait(300);
     continue;
+  }
+  if (s.stop === 'machines') {
+    // the long walk out to the machines: stay put in the breakfast room, and she stops and waits for you
+    await wait(6000);
+    s = await st();
+    const gap = await ev(() => { const s = window.__game.shift, j = s.training.june, p = s.g.player; return Math.hypot(j.x - p.x, j.z - p.z); });
+    check('left behind, June stops and waits for you', s.waiting && gap < 7.5 && !s.arrived, `waiting=${s.waiting} ${gap.toFixed(1)} m | ${s.obj}`);
+    await page.screenshot({ path: `${SP}/tour-waiting.png` });
   }
   await goNearJune();
   if (s.stop === 'machines') await page.screenshot({ path: `${SP}/tour-machines.png` });

@@ -50,6 +50,7 @@ import { XBuilder, panel } from './world/geo.js';
 import { F_EMIT } from '../engine/raster.js';
 
 const at = Clock.at;
+const SHELF_NAME = { soda: 'soda shelf', snack: 'snack shelf', soap: 'soap shelf' };
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 export class Shift {
@@ -339,6 +340,14 @@ export class Shift {
     const top = [...pl.held].reverse().find((h) => !h.pocket) || topItem(pl);
     if (!top) return;
     if (top.kind === 'mop') { this.toggleMop(true); return; }
+    // in the supply room, a case or a box goes back on its shelf, not on the floor
+    if (top.kind === 'vendPack' && this.g.playerZone === 'maint') {
+      this.vending.putBack(top);
+      this.removeHeld(top);
+      this.g.sound.drop();
+      this.toast(`Put the ${top.pack} of ${PRODUCTS[top.product].label} back on the ${SHELF_NAME[PRODUCTS[top.product].machine]}.`, 'note');
+      return;
+    }
     this.removeHeld(top);
     const fx = Math.sin(pl.yaw) * 0.6, fz = Math.cos(pl.yaw) * 0.6;
     this.floorItems.push({ item: top, x: pl.x + fx, z: pl.z + fz, lv: pl.lv, y: pl.y });
@@ -874,16 +883,46 @@ export class Shift {
     this.toast('Cleared a block of ice the size of a shoebox out of the chute.', 'good');
   }
   /* ---------------- the vending machines ---------------- */
+  /** What you are carrying that goes in this machine and still fits. */
+  loadable(id) {
+    const V = this.vending, M = MACHINES[id];
+    return this.heldAll('vendPack').filter((p) => PRODUCTS[p.product].machine === id && V.count(id, p.product) < M.cap);
+  }
   vendPrompt(id) {
     const V = this.vending, M = MACHINES[id];
-    const pack = this.heldAll('vendPack').find((p) => PRODUCTS[p.product].machine === id);
-    if (pack) return `Open ${M.name} and load the ${PRODUCTS[pack.product].label}`;
-    const t = V.trouble(id);
     const name = M.name.replace(/^the /, '');
+    const packs = this.loadable(id);
+    if (packs.length) return `Load ${packs.length > 1 ? `${packs.length} boxes` : `the ${packs[0].pack} of ${PRODUCTS[packs[0].product].label}`} into the ${name}`;
+    const t = V.trouble(id);
     return t ? `Open the ${name} (${t})` : V.readyForCoins(id) && V.machine(id).coins >= 5 ? `Open the ${name} (coin box ${money(V.machine(id).coins)})` : `Open the ${name}`;
   }
+  /** E on a machine: carrying its stock, load it straight in; otherwise open the front and look. */
+  useVend(id) {
+    const V = this.vending, M = MACHINES[id];
+    const packs = this.loadable(id);
+    if (!packs.length) { this.openVend(id); return; }
+    const done = [];
+    for (const p of packs) {
+      const n = V.load(id, p);
+      if (n > 0) done.push(`${n} ${PRODUCTS[p.product].label}`);
+      if (p.qty <= 0) this.removeHeld(p);
+      this.onVendLoaded(id, p.product);
+    }
+    this.g.sound.vendDrop(0, 0.6);
+    const left = packs.filter((p) => p.qty > 0);
+    const full = !V.empties(id).length && V.readyForCoins(id);
+    this.toast(`Loaded ${done.join(' and ')}.${left.length ? ` ${left.map((p) => `${p.qty} left in the ${p.pack}`).join(', ')}: put ${left.length > 1 ? 'them' : 'it'} back on the shelf.` : ''}${full ? ` ${M.name.charAt(0).toUpperCase() + M.name.slice(1)} is full: open it (E) to pull the coin box.` : ''}`, 'good');
+  }
   openVend(id) { this.standUp(); this.openPicker(new VendPanel(this, id)); this.g.sound.lockClick(false); }
-  openStock() { this.openPicker(new StockShelf(this).focusNeeded()); }
+  stockPrompt(id) {
+    const V = this.vending, M = MACHINES[id];
+    const unit = SHELF_NAME[id].charAt(0).toUpperCase() + SHELF_NAME[id].slice(1);
+    const mine = this.heldAll('vendPack').filter((p) => PRODUCTS[p.product].machine === id);
+    if (mine.length) return `${unit}: put back the ${mine[0].pack} of ${PRODUCTS[mine[0].product].label}, or take more`;
+    const out = V.empties(id);
+    return out.length ? `${unit}: ${M.name} is out of ${out.map((k) => PRODUCTS[k].spoken || PRODUCTS[k].label).join(', ')}` : `${unit} (for ${M.name})`;
+  }
+  openStock(id) { this.standUp(); this.openPicker(new StockShelf(this, id)); }
   /* What the panels tell the rest of the night. */
   onVendLoaded(id, prod) {
     if (!this.vending.empties(id).length) this.log(`Filled ${MACHINES[id].name}.`, 'plain');

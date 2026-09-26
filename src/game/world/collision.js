@@ -14,7 +14,7 @@
 import {
   OFFICE, LOBBY, DESK, BREAKFAST, ARCH, WEST, EAST, NORTH, POOL, STAIRS, ROOMS, FLOOR2, ROOM_W, ROOM_D,
   LAUNDRY, MAINT, ALCOVE, LINEN, SUPPLY, MGR_DESK, PANTRY_SHELF, FRIDGE, BFAST_COUNTER, BTABLES, NEWS_RACK,
-  BTRASH, ICE_MACHINE, VENDING, POLES, SIGN_POS, DUMPSTER, toWorld,
+  BTRASH, ICE_MACHINE, VENDING, VEND_SHELF, POLES, SIGN_POS, DUMPSTER, toWorld,
 } from './layout.js';
 import { roomFurniture } from './roombuild.js';
 
@@ -147,7 +147,7 @@ export function buildSolids() {
   // things inside: washers and dryers, the table, the shelves, the heater, the machines
   add(LAUNDRY.x0 + 0.1, N.back - 0.8, LAUNDRY.x1 - 0.1, N.back, 0, 'furniture');
   add(LAUNDRY.x1 - 0.7, N.facade + 1.2, LAUNDRY.x1 - 0.1, N.facade + 2.8, 0, 'furniture');
-  add(MAINT.x0 + 0.1, N.facade + 1.0, MAINT.x0 + 0.7, N.facade + 3.4, 0, 'shelf');
+  add(VEND_SHELF.x0, VEND_SHELF.z0, VEND_SHELF.x1, VEND_SHELF.z1, 0, 'shelf');
   add(MAINT.x1 - 0.8, N.back - 0.9, MAINT.x1 - 0.2, N.back - 0.3, 0, 'furniture');
   add(ICE_MACHINE.x0, ICE_MACHINE.z0, ICE_MACHINE.x1, ICE_MACHINE.z1, 0, 'machine');
   for (const v of VENDING) add(v.x0, v.z0, v.x1, v.z1, 0, 'machine');

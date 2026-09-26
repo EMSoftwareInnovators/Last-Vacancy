@@ -18,7 +18,7 @@ import {
   OFFICE, LOBBY, DESK, BREAKFAST, BACKOFFICE, PANTRY, ARCH, WEST, EAST, NORTH, POOL, POOL_GATE,
   POOL_GATE_N, DUMPSTER, SIGN_POS, STAIRS, ROOMS, FLOOR2, ROOM_W, ROOM_H, LAUNDRY, MAINT, ALCOVE,
   DESK_PROPS, BOARD, LINEN, SUPPLY, MGR_DESK, PANTRY_SHELF, FRIDGE, BFAST_COUNTER, STATIONS, BTABLES,
-  SEATS, NEWS_RACK, BTRASH, ICE_MACHINE, VENDING, VEND_BY_ID, POLES, HIGHWAY,
+  SEATS, NEWS_RACK, BTRASH, ICE_MACHINE, VENDING, VEND_BY_ID, STOCK_UNITS, VEND_SHELF, POLES, HIGHWAY,
 } from './layout.js';
 import { officeLight, outdoorLight, utilityLight } from './lighting.js';
 import { XBuilder, wall, wall2, floor, ceiling, sign, panel, post, hash2 } from './geo.js';
@@ -591,7 +591,8 @@ function buildNorth(mb, T) {
     mb.solid(x0 - 0.07, 2.1, N.facade - 0.03, x1 + 0.07, 2.18, N.facade + 0.15, T.doorFrame, [0, 0, 32, 8]);
   }
   panel(mb, (LAUNDRY.x0 + LAUNDRY.x1) / 2 + 0.3, 2.25, N.facade - 0.02, 1.0, 0.25, Math.PI, T.laundrySign);
-  panel(mb, (MAINT.door.x0 + MAINT.door.x1) / 2, 1.55, N.facade - 0.02, 0.6, 0.15, Math.PI, T.maintSign);
+  // over the door, on the wall: a sign on the leaf itself would stay put when the door swings
+  panel(mb, (MAINT.door.x0 + MAINT.door.x1) / 2, 2.24, N.facade - 0.02, 0.8, 0.2, Math.PI, T.maintSign);
   // the alcove: open at the front, header over it with ICE on it
   wall(mb, ALCOVE.x1, N.facade, ALCOVE.x0, N.facade, 2.35, TOP, T.stucco);
   panel(mb, (ALCOVE.x0 + ALCOVE.x1) / 2, 2.4, N.facade - 0.02, 0.9, 0.24, Math.PI, T.iceSign, F_EMIT);
@@ -644,10 +645,22 @@ function buildUtilityInteriors(T, add) {
     mb.box(3.2, 2.4, 34.3, 4.2, 2.45, 34.6, { all: { tex: T.lightPanel, uv: [0, 0, 64, 16], flags: F_EMIT } });
     panel(mb, (R.x0 + R.x1) / 2, 1.0, R.z1 - 0.08, 1.8, 1.2, Math.PI, T.tools);
     panel(mb, R.x1 - 0.08, 1.0, 33.0, 0.34, 0.9, -Math.PI / 2, T.breakerBox);
-    mb.box(R.x0 + 0.1, 0, R.z0 + 1.0, R.x0 + 0.7, 1.9, R.z0 + 3.4, { all: { tex: T.steelShelf, uv: [0, 0, 64, 64] }, nx: null, ny: null });
-    // the vending stock: cases of soda on the bottom two shelves, boxes of snacks and soap on top
-    for (let k = 0; k < 3; k++) mb.solid(R.x0 + 0.12, 0.2 + k * 0.6, R.z0 + 1.1, R.x0 + 0.65, 0.5 + k * 0.6, R.z0 + 3.3, k < 2 ? T.sodaCases : T.cardboard, [0, 0, 64, 32]);
-    panel(mb, R.x0 + 0.72, 1.98, R.z0 + 2.2, 0.62, 0.15, Math.PI / 2, T.vendShelfSign);
+    /* The vending stock: a shelf unit for each machine along the west wall,
+       soda cases, snack boxes, laundry soap, each with its sign on top, and
+       VENDING STOCK on the wall over all three. */
+    const stockTex = { soda: T.sodaCases, snack: T.snackBoxes, soap: T.soapBoxes };
+    const stockSign = { soda: T.stockSignSoda, snack: T.stockSignSnack, soap: T.stockSignSoap };
+    for (const u of STOCK_UNITS) {
+      // an open-fronted steel unit: sides, top, three shelves, and the stock on them where you can see it
+      mb.box(u.x0, 0, u.z0, u.x1, u.top, u.z1, { all: { tex: T.steelShelf, uv: [0, 0, 64, 64] }, px: null, nx: null, ny: null });
+      for (let k = 0; k < 3; k++) {
+        const y = 0.12 + k * 0.6;
+        mb.solid(u.x0 + 0.01, y, u.z0 + 0.02, u.x1 - 0.01, y + 0.03, u.z1 - 0.02, T.metal, [0, 0, 32, 8]);
+        mb.solid(u.x0 + 0.06, y + 0.03, u.z0 + 0.06, u.x1 - 0.08, y + 0.4, u.z1 - 0.06, stockTex[u.id], [0, 0, 64, 32]);
+      }
+      panel(mb, u.x1 + 0.02, u.top + 0.02, (u.z0 + u.z1) / 2, 1.0, 0.25, Math.PI / 2, stockSign[u.id]);
+    }
+    panel(mb, R.x0 + 0.08, 2.24, (VEND_SHELF.z0 + VEND_SHELF.z1) / 2, 2.2, 0.28, Math.PI / 2, T.vendShelfSign);
     post(mb, R.x1 - 0.5, R.z1 - 0.6, 0, 1.5, 0.28, T.metal, 8);                       // water heater
     mb.solid(R.x1 - 0.8, 0, R.z0 + 0.5, R.x1 - 0.4, 0.34, R.z0 + 0.85, T.bucket, [0, 0, 32, 16]);
     add('maintInt', mb, { indoor: true });

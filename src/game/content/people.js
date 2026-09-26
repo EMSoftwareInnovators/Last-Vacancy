@@ -404,7 +404,7 @@ export const PEOPLE = [
     kind: 'staff', seed: 0x10E55,
     app: {
       gender: 'f', height: 'average', build: 'average', facial: 'clean', glasses: 'square', hat: 'none',
-      gait: 'brisk', carry: 'none', voice: 'raspy',
+      gait: 'normal', carry: 'none', voice: 'raspy',
       hair: H('gray', 'gray', '#8f8a82', '#5f5a54', 'short', 'short and gray, set Saturdays'),
       jacket: J('plum', 'plum', '#4a2438', 'cardigan'), pants: C('navy', 'navy', '#1e2a4a'),
       shirt: C('cream', 'cream', '#c8bd9c'), skin: '#e0b48e',

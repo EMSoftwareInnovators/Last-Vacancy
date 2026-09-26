@@ -334,8 +334,12 @@ export function buildTextures() {
   });
   T.iceSign = makeTex(64, 16, (g, w, h) => { fill(g, '#123a58', w, h); text(g, 'ICE', w / 2, h / 2 + 1, 11, '#d8f0ff'); noise(g, w, h, 6); });
   T.laundrySign = plate('GUEST LAUNDRY');
-  T.maintSign = plate('SUPPLY ROOM', '#efe7d2', '#8a1a14', 7);
-  T.vendShelfSign = plate('VENDING STOCK', '#efe7d2', '#1a1a1a', 6);
+  T.maintSign = plate('SUPPLY ROOM', '#efe7d2', '#8a1a14', 8);
+  T.vendShelfSign = plate('VENDING STOCK', '#1e4a8a', '#f2ecd6', 8);
+  /* The three shelf units in the supply room, one per machine, colored like the machines. */
+  T.stockSignSoda = plate('SODA', '#b8201a', '#fff', 10);
+  T.stockSignSnack = plate('SNACKS', '#2a2a30', '#e0b030', 10);
+  T.stockSignSoap = plate('SOAP', '#1e4a8a', '#fff', 10);
   T.poolRules = makeTex(32, 64, (g, w, h) => {
     fill(g, '#efe7d2', w, h);
     text(g, 'POOL', w / 2, 6, 7, '#123a58');
@@ -987,6 +991,17 @@ export function buildTextures() {
     for (let i = 0; i < 4; i++) { g.fillStyle = cols[i % cols.length]; g.fillRect(i * 16, 0, 15, 15); g.fillStyle = cols[(i + 3) % cols.length]; g.fillRect(i * 16 + 2, 16, 13, 15); }
     g.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 4; i++) g.fillRect(i * 16 + 3, 5, 8, 2);
     noise(g, w, h, 8); grime(g, w, h, 0.15, 5);
+  });
+  T.snackBoxes = makeTex(64, 32, (g, w, h) => {
+    fill(g, '#9a7a4a', w, h);
+    const cols = ['#e0b030', '#c02a2a', '#2a6ab8', '#3a8a3a', '#e07a2a', '#6a3a9a'];
+    for (let i = 0; i < 8; i++) { const x = (i % 4) * 16, y = Math.floor(i / 4) * 16; g.fillStyle = '#b8945a'; g.fillRect(x + 1, y + 1, 14, 14); g.fillStyle = cols[i % cols.length]; g.fillRect(x + 3, y + 4, 10, 5); }
+    noise(g, w, h, 8); grime(g, w, h, 0.12, 5);
+  });
+  T.soapBoxes = makeTex(64, 32, (g, w, h) => {
+    fill(g, '#8a7a5a', w, h);
+    for (let i = 0; i < 8; i++) { const x = (i % 4) * 16, y = Math.floor(i / 4) * 16; g.fillStyle = i % 3 === 2 ? '#f0f0f0' : '#e8761a'; g.fillRect(x + 1, y + 1, 14, 14); g.fillStyle = i % 3 === 2 ? '#1e6ab8' : '#1e4a8a'; g.fillRect(x + 4, y + 5, 8, 5); }
+    noise(g, w, h, 8); grime(g, w, h, 0.12, 5);
   });
   T.machineSide = makeTex(16, 64, (g, w, h) => { fill(g, '#5a5c5e', w, h); noise(g, w, h, 8); });
   T.washer = makeTex(32, 32, (g, w, h) => { fill(g, '#e8e4d8', w, h); g.fillStyle = '#8a8c8e'; g.fillRect(0, 0, w, 6); g.fillStyle = '#c02020'; g.fillRect(3, 2, 3, 2); g.fillStyle = '#6a6e72'; g.fillRect(20, 1, 9, 4); text(g, '75¢', 16, 18, 7, '#1a1a1a'); noise(g, w, h, 5); });

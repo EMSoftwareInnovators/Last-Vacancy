@@ -314,6 +314,9 @@ body.cine .pad{max-height:76cqh}
 .sheet.vend table{font-size:2cqw}
 .sheet.vend .mono{font-family:"Courier New",monospace;white-space:pre;letter-spacing:-.05cqw}
 .sheet.vend tr.head td{border-bottom:0.25cqw solid #2a2418;padding-top:.6cqw}
+.sheet.vend td.do{text-align:right;font-weight:bold;white-space:nowrap;padding-left:1cqw}
+.sheet.vend tr.act td{background:#e4dcc0}
+.sheet.vend tr.act.sel td{background:#2a2418}
 .sheet tr.sel .bad,.sheet tr.sel .ok,.sheet tr.sel .warn{color:inherit;text-decoration:underline}
 /* The owner's notes: yellow pad, felt tip, capitals when she means it. */
 .sheet.note{

@@ -149,7 +149,7 @@ export class NPCs {
       const cx = d.hx + Math.cos(d.a) * d.w / 2, cz = d.hz - Math.sin(d.a) * d.w / 2;
       if (Math.hypot(p.x - cx, p.z - cz) > 1.2) continue;
       const mine = (d.room && (d.room === p.room || d.room === p.keyFor)) || (d.staff && p.kind === 'staff');
-      if (mine) doors.open(d, 1.6);
+      if (mine) doors.open(d, p.holdsDoors || 1.6);          // June holds it for you
     }
   }
 }

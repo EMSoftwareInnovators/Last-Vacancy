@@ -12,7 +12,7 @@
    box of each snack and each soap, and a place to put back the
    half a case you did not need.
    ============================================================ */
-import { PRODUCTS, MACHINES, MACHINE_IDS, shelfKey } from '../sim/vending.js';
+import { PRODUCTS, MACHINES, shelfKey } from '../sim/vending.js';
 import { makeItem, makePack } from '../sim/items.js';
 import { money } from '../dialogue/runner.js';
 
@@ -32,9 +32,11 @@ export class VendPanel {
   rows() {
     const out = this.M.slots.map((k) => ({ kind: 'slot', prod: k }));
     out.push({ kind: 'coins' });
+    if (this.heldBox()) out.push({ kind: 'coinsBack' });
     if (this.s.vending.machine(this.id).jam) out.push({ kind: 'jam' });
     return out;
   }
+  heldBox() { return this.s.heldAll('vendCoins').find((b) => b.machine === this.id) || null; }
   /** Open on the column your case is for, or the first one that is out. */
   firstUseful() {
     const V = this.s.vending, st = V.machine(this.id);
@@ -93,6 +95,15 @@ export class VendPanel {
       s.onVendCoins(this.id, amt);
       return;
     }
+    if (row.kind === 'coinsBack') {
+      const box = this.heldBox();
+      if (!box) return;
+      st.coins = Math.round((st.coins + box.amount) * 100) / 100;
+      s.removeHeld(box);
+      snd.coins(0, 0.7);
+      this.msg = `Put the coin box back in: ${money(box.amount)}.`;
+      return;
+    }
     if (row.kind === 'jam') {
       V.clearJam(this.id);
       snd.thump(0, 0.8);
@@ -113,6 +124,7 @@ export class VendPanel {
         const full = V.coinsFull(this.id);
         return `<tr class="${sel}"><td>${i + 1}.</td><td>Coin box</td><td class="mono">${bar(st.coins, M.coinCap)}</td><td>${money(st.coins)}</td><td>${full ? '<span class="bad">FULL</span>' : V.readyForCoins(this.id) && st.coins > 0 ? '<span class="ok">PULL IT</span>' : ''}</td></tr>`;
       }
+      if (r.kind === 'coinsBack') return `<tr class="${sel}"><td>${i + 1}.</td><td colspan="4">Put the coin box you pulled back in (${money(this.heldBox().amount)})</td></tr>`;
       return `<tr class="${sel}"><td>${i + 1}.</td><td colspan="4"><span class="bad">Something is stuck in the coin mech.</span> Clear it.</td></tr>`;
     }).join('');
     const packs = s.heldAll('vendPack').filter((p) => PRODUCTS[p.product].machine === this.id);
@@ -124,74 +136,122 @@ export class VendPanel {
   }
 }
 
-/* ---------------- the supply room shelf ---------------- */
+/* ---------------- the supply room shelf ----------------
+   One unit per machine. The list opens on what you most likely came for:
+   what you are carrying, if you are carrying some of it (E puts it back),
+   otherwise "take what the machine needs". Every line says what E will do. */
 export class StockShelf {
-  constructor(shift) { this.s = shift; this.title = 'VENDING STOCK'; this.sel = 0; this.msg = ''; }
+  constructor(shift, id) {
+    this.s = shift; this.id = id;
+    this.M = MACHINES[id];
+    this.title = `${this.M.pack === 'case' ? 'soda' : id === 'soap' ? 'soap' : 'snack'} shelf`;
+    this.msg = '';
+    this.sel = this.firstUseful();
+  }
+  carrying(prod) { return this.s.heldAll('vendPack').find((p) => p.product === prod) || null; }
+  /**
+   * What the machine is out of (or, if nothing is out, nearly out of) that the
+   * shelf has and you are not already carrying. A column that is half full
+   * would leave you holding half a box to bring back, so it is not a need.
+   */
+  needs() {
+    const V = this.s.vending, M = this.M;
+    const ok = (k) => this.s.memory.inv(shelfKey(k)) > 0 && !this.carrying(k);
+    const out = M.slots.filter((k) => V.count(this.id, k) <= 0 && ok(k));
+    if (out.length) return out;
+    return M.slots.filter((k) => V.count(this.id, k) <= Math.ceil(M.cap * 0.25) && ok(k)).sort((a, b) => V.count(this.id, a) - V.count(this.id, b));
+  }
   rows() {
     const out = [];
-    for (const p of this.s.heldAll('vendPack')) out.push({ kind: 'back', pack: p });
-    for (const id of MACHINE_IDS) {
-      out.push({ kind: 'head', id });
-      for (const k of MACHINES[id].slots) out.push({ kind: 'take', prod: k, id });
-    }
+    if (this.needs().length) out.push({ kind: 'needs' });
+    for (const k of this.M.slots) out.push({ kind: 'prod', prod: k });
     return out;
   }
-  pickable(rows) { return rows.map((r, i) => (r.kind === 'head' ? -1 : i)).filter((i) => i >= 0); }
+  firstUseful() {
+    const rows = this.rows();
+    const held = rows.findIndex((r) => r.kind === 'prod' && this.carrying(r.prod));
+    if (held >= 0) return held;
+    return 0;
+  }
   handle(i) {
-    const s = this.s, rows = this.rows(), ok = this.pickable(rows);
+    const s = this.s, rows = this.rows(), n = rows.length;
     if (i.hit('KeyQ', 'UiBack', 'Backspace')) return false;
-    let at = Math.max(0, ok.indexOf(this.sel));
-    if (ok.indexOf(this.sel) < 0) this.sel = ok[0];
-    if (i.hit('ArrowUp', 'KeyW')) { at = (at + ok.length - 1) % ok.length; this.sel = ok[at]; s.g.sound.uiMove(); this.msg = ''; }
-    if (i.hit('ArrowDown', 'KeyS')) { at = (at + 1) % ok.length; this.sel = ok[at]; s.g.sound.uiMove(); this.msg = ''; }
-    if (i.hit('KeyE', 'Enter', 'Space')) this.act(rows[this.sel]);
+    if (i.hit('ArrowUp', 'KeyW')) { this.sel = (this.sel + n - 1) % n; s.g.sound.uiMove(); this.msg = ''; }
+    if (i.hit('ArrowDown', 'KeyS')) { this.sel = (this.sel + 1) % n; s.g.sound.uiMove(); this.msg = ''; }
+    this.sel = Math.min(this.sel, n - 1);
+    const d = DIGITS.findIndex((k) => i.hit(k));
+    if (d >= 0 && d < n) this.sel = d;
+    if (i.hit('KeyE', 'Enter', 'Space') || d >= 0) {
+      const had = rows.length;
+      this.act(rows[this.sel]);
+      // the "needs" line comes and goes; keep the highlight on the same product
+      const now = this.rows().length;
+      if (now !== had) this.sel = Math.max(0, Math.min(now - 1, this.sel + (now - had)));
+    }
     return true;
   }
-  /** Start on what somebody needs: the first product that is out in a machine. */
-  focusNeeded() {
-    const rows = this.rows(), V = this.s.vending;
-    const i = rows.findIndex((r) => r.kind === 'take' && V.count(r.id, r.prod) <= 0 && this.s.memory.inv(shelfKey(r.prod)) > 0);
-    this.sel = i >= 0 ? i : this.pickable(rows)[0];
-    return this;
-  }
-  act(row) {
-    const s = this.s, V = s.vending;
-    if (!row) return;
-    if (row.kind === 'back') {
-      V.putBack(row.pack);
-      s.removeHeld(row.pack);
-      s.g.sound.drop();
-      this.msg = `Put the ${row.pack.pack} of ${PRODUCTS[row.pack.product].label} back on the shelf.`;
-      this.sel = this.pickable(this.rows())[0];
-      return;
+  take(prod) {
+    const s = this.s, V = s.vending, P = PRODUCTS[prod];
+    if (s.memory.inv(shelfKey(prod)) <= 0) { this.msg = `No ${P.label} left on the shelf. The distributor comes Monday.`; return false; }
+    const probe = makePack({ product: prod, qty: 1, pack: this.M.pack, bulky: this.M.bulky });
+    if (!s.canHold(probe)) {
+      this.msg = this.M.bulky ? 'A case of soda takes both arms. Put back what you have first (select it, E), or set it down (G).' : 'Your hands are full: three boxes is all you can carry.';
+      return false;
     }
-    if (row.kind !== 'take') return;
-    const P = PRODUCTS[row.prod], M = MACHINES[row.id];
-    if (s.memory.inv(shelfKey(row.prod)) <= 0) { this.msg = `No ${P.label} left. The distributor comes Monday.`; return; }
-    const probe = makePack({ product: row.prod, qty: 1, pack: M.pack, bulky: M.bulky });
-    if (!s.canHold(probe)) { this.msg = M.bulky ? 'A case of soda takes both arms. Put down what you have first (G), or put it back here.' : 'Your hands are full.'; return; }
-    const pack = V.takePack(row.prod);
+    const pack = V.takePack(prod);
     s.giveItem(makePack(pack), true);
     s.g.sound.pickup();
-    this.msg = `Took a ${pack.pack} of ${P.label} (${pack.qty}). It goes in ${M.name}.`;
-    s.onVendTaken(row.prod);
+    s.onVendTaken(prod);
+    return pack;
+  }
+  putBack(pack) {
+    const s = this.s;
+    s.vending.putBack(pack);
+    s.removeHeld(pack);
+    s.g.sound.drop();
+    this.msg = `Put the ${pack.pack} of ${PRODUCTS[pack.product].label} back on the shelf.`;
+  }
+  act(row) {
+    if (!row) return;
+    if (row.kind === 'needs') {
+      const got = [];
+      for (const k of this.needs()) {
+        const pk = this.take(k);
+        if (!pk) break;
+        got.push(`${PRODUCTS[k].label} (${pk.qty})`);
+        if (this.M.bulky) break;            // one case at a time
+      }
+      if (got.length) this.msg = `Took ${got.length > 1 ? `${got.length} boxes` : `a ${this.M.pack}`}: ${got.join(', ')}. Carry ${got.length > 1 ? 'them' : 'it'} to ${this.M.name} and press E on it.`;
+      return;
+    }
+    const held = this.carrying(row.prod);
+    if (held) { this.putBack(held); return; }
+    const pk = this.take(row.prod);
+    if (pk) this.msg = `Took a ${pk.pack} of ${PRODUCTS[row.prod].label} (${pk.qty}). Carry it to ${this.M.name} and press E on it.`;
   }
   render() {
-    const s = this.s, V = s.vending, rows = this.rows();
+    const s = this.s, V = s.vending, M = this.M, rows = this.rows();
+    const unit = M.pack === 'case' ? 'case' : 'box';
     const html = rows.map((r, i) => {
       const sel = i === this.sel ? 'sel' : '';
-      if (r.kind === 'head') {
-        const t = V.trouble(r.id);
-        return `<tr class="head"><td colspan="3"><b>${esc(MACHINES[r.id].title)}</b>${t ? ` <span class="bad">&mdash; ${esc(t)}</span>` : ''}</td></tr>`;
+      if (r.kind === 'needs') {
+        const list = this.needs().slice(0, M.bulky ? 1 : 3).map((k) => PRODUCTS[k].label).join(', ');
+        return `<tr class="${sel} act"><td colspan="3"><b>Take what ${esc(M.name)} needs:</b> ${esc(list)}</td><td class="do">TAKE</td></tr>`;
       }
-      if (r.kind === 'back') return `<tr class="${sel}"><td>Put back:</td><td>${r.pack.pack} of ${esc(PRODUCTS[r.pack.product].label)} (${r.pack.qty})</td><td></td></tr>`;
-      const P = PRODUCTS[r.prod], M = MACHINES[r.id], have = s.memory.inv(shelfKey(r.prod));
-      const inMachine = V.count(r.id, r.prod);
-      const flag = inMachine <= 0 ? ' <span class="bad">(out)</span>' : inMachine < M.cap ? ` <span class="quiet">(${inMachine}/${M.cap})</span>` : '';
-      return `<tr class="${sel}"><td>${M.pack === 'case' ? 'Case' : 'Box'}</td><td>${esc(P.label)}${flag}</td><td>${have <= 0 ? '<span class="bad">NONE</span>' : `${have} on the shelf`}</td></tr>`;
+      const P = PRODUCTS[r.prod], have = s.memory.inv(shelfKey(r.prod)), inM = V.count(this.id, r.prod);
+      const held = this.carrying(r.prod);
+      const state = inM <= 0 ? '<span class="bad">OUT</span>' : inM >= M.cap ? 'full' : `${inM}/${M.cap}`;
+      const act = held ? '<span class="warn">PUT BACK</span>' : have <= 0 ? '<span class="quiet">none</span>' : 'take';
+      return `<tr class="${sel}"><td>${esc(P.label)}${held ? ' <span class="quiet">(you have one)</span>' : ''}</td><td>machine: ${state}</td><td>${have} on shelf</td><td class="do">${act}</td></tr>`;
     }).join('');
-    return `<div class="sheet shelf vend"><h2>VENDING STOCK <span class="quiet">&mdash; supply room</span></h2>
-      <p class="quiet">A case of soda fills a column and takes both arms. Snack and soap boxes: one a hand.</p>
+    const packs = s.heldAll('vendPack');
+    const mine = packs.filter((p) => PRODUCTS[p.product].machine === this.id);
+    const carryLine = mine.length
+      ? `You're carrying ${mine.map((p) => `a ${p.pack} of ${PRODUCTS[p.product].label}`).join(' and ')}. ${mine.length > 1 ? 'Their lines say' : 'Its line says'} PUT BACK: E puts it back on the shelf.`
+      : packs.length ? `You're carrying ${packs.map((p) => `a ${p.pack} of ${PRODUCTS[p.product].label}`).join(' and ')}, which goes on another shelf.`
+        : `One ${unit} fills one column of ${M.name}.${M.bulky ? ' A case takes both arms.' : ' You can carry three boxes.'}`;
+    return `<div class="sheet shelf vend"><h2>${esc(M.title)} STOCK <span class="quiet">&mdash; supply room</span></h2>
+      <p class="quiet">${esc(carryLine)}</p>
       <table>${html}</table>${this.msg ? `<p class="k">${esc(this.msg)}</p>` : ''}
       <p class="foot">${s.g.ui.keyHint('interact')} take / put back &nbsp; ${s.g.ui.keyHint('back')} done &nbsp; &middot; &nbsp; hands: ${esc(s.handsText() || 'empty')}</p></div>`;
   }

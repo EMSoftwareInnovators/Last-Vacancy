@@ -24,6 +24,8 @@ import { MACHINES, MACHINE_IDS, PRODUCTS } from './vending.js';
 import { walkOff } from './npcs.js';
 import { Clock } from './clock.js';
 
+/* Metres a second. You walk at 1.75. */
+const TOUR_PACE = 1.2, RIDE_PACE = 1.35;
 /* Out of the way behind the desk: the west end, past the printer. */
 const DESK_CORNER = { x: -0.5, z: -6.4, lv: 0 };
 const WHERE = {
@@ -60,7 +62,9 @@ export class Training {
     j.kind = 'staff';
     j.x = TOUR[0].at.x; j.z = TOUR[0].at.z; j.lv = 0; j.hidden = false;
     j.yaw = Math.atan2(s.g.player.x - j.x, s.g.player.z - j.z);
-    j.speed *= 1.05;
+    // an easy walk, slower than yours, so you can always catch her; and she holds the staff doors
+    j.speed = TOUR_PACE;
+    j.holdsDoors = 5;
     this.june = j;
     s.npcs.push(j, this.brain());
     this.phase = 'tour';
@@ -74,6 +78,8 @@ export class Training {
     const s = this.s;
     this.phase = 'ride';
     this.goal = null;
+    this.waiting = false;
+    if (this.june) { this.june.speed = RIDE_PACE; this.june.holdsDoors = 3; }
     s.clock.hold = false;
     this.wakes0 = s.wakeups.list.length;   // the standing ones (Hollis, the residents) are not yours
     s.log('June showed you round.', 'plain');
@@ -131,6 +137,16 @@ export class Training {
         const g = T.goal, pl = s.g.player;
         if (g && !(s.speaking === p)) {
           const d = Math.hypot(g.x - p.x, g.z - p.z);
+          // when she is leading (the tour, or "show me"): if you fall behind she stops, turns round, and waits for you
+          if ((T.phase === 'tour' || T.lead) && (d > 0.3 || (p.lv || 0) !== g.lv)) {
+            const dp = Math.hypot(pl.x - p.x, pl.z - p.z);
+            T.waiting = dp > (T.waiting ? 3.2 : 6) || ((pl.lv || 0) !== (p.lv || 0) && dp > 2.5);
+            if (T.waiting) {
+              p.yaw = angleTowards(p.yaw, Math.atan2(pl.x - p.x, pl.z - p.z), dt * 5);
+              T.arrived = false;
+              return false;
+            }
+          }
           if (d > 0.3 || (p.lv || 0) !== g.lv) {
             if (!T.routed) { n.route(p, g.x, g.z, g.lv); T.routed = { ...g }; }
             p.rushing = Math.hypot(pl.x - p.x, pl.z - p.z) > 9 && T.phase !== 'tour';
@@ -159,7 +175,7 @@ export class Training {
     const d = Math.hypot(pl.x - j.x, pl.z - j.z);
     const near = d < 3.4 && (pl.lv || 0) === (j.lv || 0);
     if (near) this.lastSeen = s.g.time;
-    if (this.phase === 'tour') { this.tour(dt, near); return; }
+    if (this.phase === 'tour') { this.tour(dt, this.nextTo()); return; }
     if (this.phase === 'leaving') return;
     // a quarter to seven: she goes home
     if (s.clock.past(6, 45) && !s.mode) { this.leave(); return; }
@@ -175,6 +191,13 @@ export class Training {
     this.coach(dt);
   }
 
+  /** Right next to her, in the same room: close enough that she would start talking to you. */
+  nextTo() {
+    const s = this.s, pl = s.g.player, j = this.june;
+    if ((pl.lv || 0) !== (j.lv || 0) || Math.hypot(pl.x - j.x, pl.z - j.z) > 2.4) return false;
+    const area = (z) => (z === 'lobby' ? 'desk' : z === 'alcove' ? 'outside' : z);
+    return area(zoneAt(pl.x, pl.z, pl.lv || 0)) === area(zoneAt(j.x, j.z, j.lv || 0));
+  }
   /** The tour: walk to the stop, wait for the clerk, say the stop, or wait for the job to be done. */
   tour(dt, near) {
     const s = this.s, stop = TOUR[this.i], j = this.june;
@@ -295,12 +318,10 @@ export class Training {
     if (this.phase === 'tour') {
       const stop = TOUR[this.i];
       if (stop.handsOn) return [stop.task, false];
-      if (!this.arrived || Math.hypot(s.g.player.x - j.x, s.g.player.z - j.z) > 3.4) {
-        // where she is now, or where she is waiting for you
-        const where = this.arrived && stop.where ? stop.where : WHERE[zoneAt(j.x, j.z, j.lv || 0)];
-        return [`Follow June${where ? ` -- she's ${where}` : ''}.`, false];
-      }
-      return ['June wants a word.', true];
+      const where = this.arrived && stop.where ? stop.where : WHERE[zoneAt(j.x, j.z, j.lv || 0)];
+      if (this.waiting) return [`June is waiting for you${where ? `, ${where}` : ''}.`, true];
+      if (!this.arrived) return [`Follow June${where ? ` -- she's ${where}` : ''}.`, false];
+      return [`Go over to June${where ? `, ${where}` : ''}. She wants a word.`, true];
     }
     if (this.lead) return [`Follow June to ${this.lead.label}.`, false];
     return null;

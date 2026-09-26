@@ -90,12 +90,12 @@ export const TOUR = [
   {
     id: 'machines', at: { x: 7.3, z: 31.7, lv: 0 }, where: 'outside, at the vending machines by the ice',
     node: (s, T, j) => say(j, 'Drink machine, snack machine, ice. The vending company quit on us in March, so these are ours now, which means they\'re yours. You fill them, you pull the coins, the coins go in the register. See the red light on the drink machine? SOLD OUT. On Coke. In this parish that\'s a crime.', [
-      reply('What do I do?', () => say(j, 'The supply room is the steel door two down, past the laundry. The shelf just inside has cases of soda. Get a case of Coke, bring it back, open the machine and load it. The machine shows you what\'s out.', ok(T, 'On it.', () => T.nextStop()))),
+      reply('What do I do?', () => say(j, 'The supply room is the steel door two down, past the laundry. Inside there\'s a shelf for each machine -- SODA, SNACKS, SOAP. Take a case of Coke off the SODA shelf, carry it back here, and press E on the machine. It loads itself. Anything you took and don\'t need goes back on its shelf.', ok(T, 'On it.', () => T.nextStop()))),
     ]),
   },
   {
     id: 'coke', at: { x: 7.3, z: 31.7, lv: 0 }, handsOn: true,
-    task: 'Get a case of Coke off the shelf in the supply room (the steel door past the laundry), and load it into the drink machine.',
+    task: 'Take a case of Coke off the SODA shelf in the supply room (the steel door past the laundry), carry it back, and press E on the drink machine.',
     done: (s) => s.vending.count('soda', 'coke') >= MACHINES.soda.cap,
     doneLine: 'There. Full.',
   },
@@ -151,7 +151,7 @@ export function askNode(s, T, j) {
   return say(j, hi, [
     reply('What should I be doing right now?', () => nextNode(s, T, j)),
     reply('How does a check-in go again?', () => say(j, 'Talk to them first: name, how many, how many nights, smoking, what beds, how they\'re paying. Then the terminal, F1, and Enter posts it. Tell them the total. Take the money -- cash to the register, a card through the imprinter, a voucher against the binder. Then the key off the rack, and look at the fob before it goes across the counter.', ok(T, 'Got it.'))),
-    reply('The machines -- walk me through it again.', () => say(j, 'Open a machine and it shows you what\'s out. The supply room is the steel door by the laundry: cases of soda, boxes of snacks and soap on the shelf inside. Load the column. When the whole machine\'s full, pull the coin box, and ring it in at the register. If somebody says it ate their money, it\'s stuck: open it and clear it.', [
+    reply('The machines -- walk me through it again.', () => say(j, 'Open a machine and it shows you what\'s out. The supply room is the steel door by the laundry, and there\'s a shelf for each machine: SODA, SNACKS, SOAP. The top line on each takes what that machine needs. Carry it over and press E on the machine; it loads. Took too much? Put it back: pick it on the shelf, or just G in the supply room. When a machine\'s full, open it, pull the coin box, and ring it in at the register.', [
       reply('Show me the supply room.', () => { T.leadTo(PLACES.supply); return say(j, 'Come on.', ok(T, '(Follow her.)')); }),
       reply('Got it.', () => null),
     ])),

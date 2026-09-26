@@ -66,10 +66,12 @@ against the binder) → the key off the rack behind you → across the counter.
   quarter to seven; after that she is a note on the desk. (Worked a desk before? Tell her, and
   she skips the tour.)
 - The vending machines are yours: the drink and snack machines in the alcove by the ice, and
-  the soap machine in the guest laundry. They sell down all night. Open one to see what is out,
-  carry a case or a box over from the shelf in the supply room next door, and load it. When a
-  machine is full, the coin box comes out, and the coins go in the register, where the audit
-  expects them. An empty column, a coin box too full to take a quarter, or a drink machine
+  the soap machine in the guest laundry. They sell down all night. Open one to see what is out.
+  In the supply room next door there is a shelf for each machine (SODA, SNACKS, SOAP); the top
+  line of each takes what that machine needs, and anything you took by mistake goes back the
+  same way (or with G, anywhere in the supply room). Carry it over and press E on the machine
+  to load it. When a machine is full, the coin box comes out, and the coins go in the register,
+  where the audit expects them. An empty column, a coin box too full to take a quarter, or a drink machine
   that keeps somebody's money all bring a guest to the desk.
 - Groups from the second night: the paving crew, a twelve-and-under travel team, a tour bus.
 - The phone: towels, remotes, wrong numbers, somebody's sister, somebody's mother-in-law, a
@@ -106,6 +108,7 @@ node tools/autopilot.mjs --sloppy              # wrong keys, missed wake-ups: se
 node tools/autopilot.mjs --novend --shifts=3    # never touch the machines: see who comes down about it
 node tools/locktest.mjs                         # Escape, Q and the mouse
 node tools/tourtest.mjs                         # night one: June's tour, start to finish
+node tools/vendtest.mjs                         # the supply room shelves, loading, coin boxes, the register
 node tools/uishots.mjs             # screenshots of the note, desk, dialogue, terminal, rack, phone
 ```
 

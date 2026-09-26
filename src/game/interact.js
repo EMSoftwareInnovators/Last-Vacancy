@@ -17,7 +17,7 @@
    ============================================================ */
 import {
   DESK_PROPS, BOARD, LINEN, SUPPLY, MGR_DESK, PANTRY_SHELF, FRIDGE, STATIONS, BFAST_COUNTER, BTV, NEWS_RACK, BTRASH,
-  ICE_MACHINE, VENDING, VEND_SHELF, NEWS_DROP, DUMPSTER, ROOMS, toWorld, MAINT, GATES, DESK,
+  ICE_MACHINE, VENDING, STOCK_UNITS, NEWS_DROP, DUMPSTER, ROOMS, toWorld, MAINT, GATES, DESK,
 } from './world/layout.js';
 import { roomFurniture } from './world/roombuild.js';
 import { castInteract } from './player.js';
@@ -127,7 +127,7 @@ export class Interact {
     });
     // the drink and snack machines here, and the soap machine in the laundry: open the front, see what is out
     for (const v of VENDING) {
-      add({ id: 'vend:' + v.id, aabb: { x0: v.x0 - 0.04, x1: v.x1 + 0.04, y0: 0, y1: v.top, z0: v.z0 - 0.04, z1: v.z1 + 0.04 }, prompt: () => s.vendPrompt(v.id), use: () => s.openVend(v.id) });
+      add({ id: 'vend:' + v.id, aabb: { x0: v.x0 - 0.04, x1: v.x1 + 0.04, y0: 0, y1: v.top, z0: v.z0 - 0.04, z1: v.z1 + 0.04 }, prompt: () => s.vendPrompt(v.id), use: () => s.useVend(v.id) });
     }
     add({ id: 'dumpster', aabb: { ...box(DUMPSTER), y1: 1.4 }, prompt: () => (s.heldOf('trash') ? 'Toss the bag in the dumpster' : null), use: () => s.tossTrash() });
     for (const g of GATES) {
@@ -139,11 +139,10 @@ export class Interact {
     /* ---------------- maintenance ---------------- */
     add({ id: 'breakers', aabb: { x0: MAINT.x1 - 0.25, x1: MAINT.x1 - 0.02, y0: 0.55, y1: 1.45, z0: 32.8, z1: 33.2 }, hold: () => (s.tasks.find((t) => t.kind === 'breaker') ? 1.0 : 0), prompt: () => (s.tasks.find((t) => t.kind === 'breaker') ? `Reset the breaker for ${s.tasks.find((t) => t.kind === 'breaker').room}` : 'Room breakers. Twenty-eight of them.'), use: () => s.resetBreaker() });
     add({ id: 'tools', aabb: { x0: 2.7, x1: 4.5, y0: 0.4, y1: 1.6, z0: MAINT.z1 - 0.3, z1: MAINT.z1 - 0.02 }, prompt: () => 'Tool wall', use: () => s.openPicker(this.toolPicker()) });
-    add({
-      id: 'vendstock', aabb: { x0: VEND_SHELF.x0, x1: VEND_SHELF.x1 + 0.05, y0: 0, y1: VEND_SHELF.top, z0: VEND_SHELF.z0, z1: VEND_SHELF.z1 },
-      prompt: () => (s.heldOf('vendPack') ? 'Vending stock (put back, or take more)' : 'Vending stock: cases of soda, boxes of snacks and soap'),
-      use: () => s.openStock(),
-    });
+    // the vending stock: one shelf unit per machine, each with its sign
+    for (const u of STOCK_UNITS) {
+      add({ id: 'stock:' + u.id, aabb: { x0: u.x0, x1: u.x1 + 0.05, y0: 0, y1: u.top + 0.3, z0: u.z0, z1: u.z1 }, prompt: () => s.stockPrompt(u.id), use: () => s.openStock(u.id) });
+    }
 
     return T;
   }

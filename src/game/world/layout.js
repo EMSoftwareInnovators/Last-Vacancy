@@ -269,8 +269,15 @@ export const VENDING = [
   { id: 'soap', x0: -1.74, x1: -1.3, z0: 34.3, z1: 35.0, top: 1.6, yaw: Math.PI / 2, w: 0.7, d: 0.44, h: 1.6 },
 ];
 export const VEND_BY_ID = Object.fromEntries(VENDING.map((v) => [v.id, v]));
-/** The supply room's shelf of cases and boxes for the machines, just inside its door. */
-export const VEND_SHELF = { x0: 1.9, x1: 2.5, z0: 32.0, z1: 34.4, top: 1.9 };
+/* The supply room's vending stock: three shelf units along the west wall,
+   one for each machine, each with its own sign. You face them from the
+   middle of the room. */
+export const STOCK_UNITS = [
+  { id: 'soda', x0: 1.9, x1: 2.5, z0: 31.95, z1: 33.15, top: 1.9 },
+  { id: 'snack', x0: 1.9, x1: 2.5, z0: 33.3, z1: 34.5, top: 1.9 },
+  { id: 'soap', x0: 1.9, x1: 2.5, z0: 34.65, z1: 35.85, top: 1.9 },
+];
+export const VEND_SHELF = { x0: 1.9, x1: 2.5, z0: 31.95, z1: 35.85, top: 1.9 };
 export const NEWS_DROP = { x: 5.4, z: 1.6 };
 /** Sodium lights on poles, and the lamps on the buildings. */
 export const POLES = [
