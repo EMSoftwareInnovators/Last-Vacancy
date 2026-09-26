@@ -8,10 +8,10 @@ await T.ev(() => { window.__game.sound.muted = true; });
 await T.page.keyboard.press('Enter');
 await T.wait(800);
 T.check('shift started', await T.ev(() => !!window.__game.shift && window.__game.state === 'PLAY'));
-T.check('note is open', await T.ev(() => window.__game.shift.mode === 'paper'));
-await T.page.keyboard.press('KeyQ');           // put June's note down
-await T.wait(200);
-T.check('note closed', await T.ev(() => window.__game.shift.mode === null));
+T.check('night one: June is at the desk, talking', await T.ev(() => window.__game.shift.mode === 'talk' && !!window.__game.shift.training));
+// "Good to meet you" / "Skip the tour" / "Got it", by keyboard
+for (const k of ['Digit2', 'Digit2', 'Digit1']) { await T.page.keyboard.press(k); await T.wait(150); }
+T.check('tour skipped: the clock runs, June rides along', await T.ev(() => { const s = window.__game.shift; return s.mode === null && s.training.phase === 'ride' && !s.clock.hold; }));
 const out = await T.ev((mins) => {
   const g = window.__game, s = g.shift;
   const start = s.clock.min;

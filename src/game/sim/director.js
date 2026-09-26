@@ -56,9 +56,10 @@ export class Director {
     const s = this.s, rng = s.rng;
     const shiftNo = s.memory.shiftNo;
     const weekday = s.clock.weekday();
-    /* How much happens tonight. The first night is short and plain: a regular
-       with a reservation, a walk-in who pays cash, a family, one guest you will
-       remember, and a trucker at one in the morning. It gets busier from there,
+    /* How much happens tonight. The first night is June's: the tour, then a
+       regular with a reservation, a walk-in who pays cash, a family, one guest
+       you will remember, somebody ordinary before midnight and a trucker at one,
+       with the machines June showed you in between. It gets busier from there,
        but never all at once. */
     const load = shiftNo === 1 ? 'first' : shiftNo === 2 ? 'light' : 'normal';
     this.load = load;
@@ -96,6 +97,9 @@ export class Director {
       plan.push({ def: rollTraveler(rng, ARCHETYPES.find((a) => a.id === 'brokedown')), arrive: [at(20, 25), at(20, 40)] });
       plan.push({ id: 'PRUITT', arrive: [at(21, 25), at(21, 40)] });
       plan.push({ id: rng.pick(['URN', 'MAGIC']), arrive: [at(22, 40), at(23, 5)] });
+      // somebody ordinary before midnight: a nurse between contracts, a man who sells something
+      const ordinary = rng.pick(['nurse', 'rep', 'student']);
+      plan.push({ def: rollTraveler(rng, ARCHETYPES.find((a) => a.id === ordinary)), arrive: [at(23, 35), at(24, 5)] });
       plan.push({ id: 'LATENIGHT', arrive: [at(25, 15), at(25, 40)] });
     } else {
       if (group === 'CREW') plan.push({ id: 'BUDDY', arrive: [at(19, 12), at(19, 26)], big: true });
@@ -154,7 +158,7 @@ export class Director {
       e.at = this.rnd(win);
     }
     plan.sort((a, b) => a.at - b.at);
-    const gap = this.load === 'first' ? 45 : this.load === 'light' ? 35 : 28;
+    const gap = this.load === 'first' ? 35 : this.load === 'light' ? 32 : 28;
     for (let i = 1; i < plan.length; i++) {
       const prev = plan[i - 1];
       const need = prev.at + (prev.big ? gap + 30 : gap) + this.s.rng() * 10;
@@ -738,8 +742,7 @@ export class Director {
     };
     if (this.variant.group === 'CREW' && this.reservations.some((r) => r.id === 'BUDDY')) call('triparish', at(19, 4) + rng() * 4);
     if (this.load === 'first') {
-      // June checks in; somebody asks the rate; somebody wants Peg's
-      call('june', this.rnd([at(20, 5), at(20, 15)]));
+      // June is standing next to you, so she does not call; somebody asks the rate; somebody wants Peg's
       call('rates', this.rnd([at(24, 40), at(25, 0)]));
       call('wrongPeg', this.rnd([at(26, 10), at(26, 40)]));
       return;
@@ -758,6 +761,10 @@ export class Director {
       // two small things, well apart: towels for the family, then a television
       this.at(this.rnd([at(22, 25), at(22, 40)]), () => this.roomProblem('towels'), 'problem towels');
       this.at(this.rnd([at(23, 20), at(23, 30)]), () => this.roomProblem('tv'), 'problem tv');
+      // the machines June showed you: the family does laundry, somebody wants a snack, somebody a Coke
+      this.at(this.rnd([at(21, 55), at(22, 10)]), () => this.errand('vend', { machine: 'soap', prefer: 'PRUITT' }), 'laundry');
+      this.at(this.rnd([at(20, 50), at(21, 10)]), () => this.errand('vend', { machine: 'snack' }), 'snack');
+      this.at(this.rnd([at(23, 40), at(24, 10)]), () => this.errand('vend', { machine: 'soda' }), 'soda');
       return;
     }
     const kinds = rng.shuffle(['towels', 'tv', 'batteries', 'toilet', 'bulb', 'toiletries', 'blanket', 'pillow']);
@@ -766,8 +773,12 @@ export class Director {
     for (let i = 0; i < n; i++) times.push(this.rnd([at(20, 20), at(23, 40)]));
     times.sort((a, b) => a - b);
     times.forEach((t, i) => this.at(t, () => this.roomProblem(kinds[i % kinds.length]), `problem ${kinds[i % kinds.length]}`));
-    // the drink machine keeps somebody's money; the ice machine jams
-    this.at(this.rnd([at(21, 40), at(22, 50)]), () => this.errand('vend'), 'vend');
+    // the drink machine keeps somebody's money; people want a snack, a soda, a box of Tide
+    this.at(this.rnd([at(21, 40), at(22, 50)]), () => this.errand('vend', { jam: true }), 'vend jam');
+    const nv = this.load === 'light' ? 1 : 1 + rng.int(2);
+    for (let i = 0; i < nv; i++) this.at(this.rnd([at(20, 10), at(23, 50)]), () => this.errand('vend', { machine: rng.pick(['soda', 'snack', 'snack']) }), 'vend');
+    if (rng.chance(0.6)) this.at(this.rnd([at(19, 50), at(22, 30)]), () => this.errand('vend', { machine: 'soap', prefer: 'ABERNATHY' }), 'laundry');
+    // the ice machine jams
     if (this.load === 'normal') this.at(this.rnd([at(22, 30), at(23, 50)]), () => { s.property.jamIce(); this.errand('ice'); }, 'ice jam');
     this.at(this.rnd([at(20, 50), at(21, 40)]), () => this.errand('ice'), 'ice');
     // somebody walks down to ask something (food, an iron, HBO, a late checkout, quarters)
@@ -803,16 +814,20 @@ export class Director {
     s.incoming(roomCall(s, p, k));
   }
 
-  /** Somebody walks to the ice machine or the drink machine. */
-  errand(kind) {
+  /**
+   * Somebody walks to the ice machine, or to a vending machine (o.machine:
+   * soda, snack, or the soap machine in the laundry). o.jam: the drink machine
+   * keeps their money. o.prefer: a roster id to send if they are up.
+   */
+  errand(kind, o = {}) {
     const s = this.s;
-    const awake = s.npcs.list.filter((p) => p.inRoom && !p.asleep && p.room && p.stay && !p.followsLeader && p.act && p.act.kind === 'inRoom' && p.bedAt);
+    const awake = s.npcs.list.filter((p) => p.inRoom && !p.asleep && p.room && p.stay && !p.followsLeader && p.act && p.act.kind === 'inRoom' && p.bedAt && !p.complaint);
     if (!awake.length) return;
-    const p = awake[Math.floor(s.rng() * awake.length)];
+    const p = (o.prefer && awake.find((q) => q.rosterId === o.prefer)) || awake[Math.floor(s.rng() * awake.length)];
     s.npcs.interrupt(p, exitRoom());
     // after: back in the room, and the rest of the evening where it was
-    p.queue.splice(1, 0, kind === 'vend' ? vendRun() : iceRun(), enterRoom(), inRoom(p.bedAt));
-    if (kind === 'vend') s.property.soda.eats = true;
+    p.queue.splice(1, 0, kind === 'vend' ? vendRun(o.machine || 'soda') : iceRun(), enterRoom(), inRoom(p.bedAt));
+    if (kind === 'vend' && o.jam) s.vending.machine('soda').jam = true;
   }
 
   noise() {

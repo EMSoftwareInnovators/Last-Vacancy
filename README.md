@@ -30,7 +30,7 @@ Or open `index.html` through any static file server. `npm run app` runs it in El
 | Use / talk / take | E | A / ✕ |
 | Pick a reply | 1–6, or arrows + E | d-pad + A |
 | Put something down / flip a tab on the rack | G | X / □ |
-| Step away from the rack, the terminal, a paper or a shelf | Q (or Backspace) | B / ○ |
+| Step away from the rack, the terminal, a paper, a shelf or a machine | Q (or Backspace) | B / ○ |
 | Notepad | Tab | Y / △ |
 | Sit on the stool (the night goes faster) | F | RB / R1 |
 | Pause | Esc | Start |
@@ -57,8 +57,20 @@ against the binder) → the key off the rack behind you → across the counter.
   Mercers and their house, Mr. Wexler and the sign, Tammy from Peg's Diner across the road,
   weekly residents, and people you will tell somebody about: nine pillows, a storm chaser, a
   magician, a woman traveling with her husband's ashes, the last encyclopedia salesman.
-- A quiet first night: five check-ins, a couple of calls and requests, one guest you will
-  remember. It gets busier from there, a guest at a time.
+- Your first night is the first night of the job, and June Whitfield, the owner, works it with
+  you. She gives you the tour before anybody arrives (the desk, the back office, the pantry,
+  breakfast, the machines, where you fill your first column of Coke and pull your first coin
+  box, the laundry, and back to the register), then follows you all night: out of the way at
+  the end of the desk, on the walk while you are in a room. Talk to her and she answers
+  questions, tells you what needs doing, and walks you to it if you ask. She goes home at a
+  quarter to seven; after that she is a note on the desk. (Worked a desk before? Tell her, and
+  she skips the tour.)
+- The vending machines are yours: the drink and snack machines in the alcove by the ice, and
+  the soap machine in the guest laundry. They sell down all night. Open one to see what is out,
+  carry a case or a box over from the shelf in the supply room next door, and load it. When a
+  machine is full, the coin box comes out, and the coins go in the register, where the audit
+  expects them. An empty column, a coin box too full to take a quarter, or a drink machine
+  that keeps somebody's money all bring a guest to the desk.
 - Groups from the second night: the paving crew, a twelve-and-under travel team, a tour bus.
 - The phone: towels, remotes, wrong numbers, somebody's sister, somebody's mother-in-law, a
   man who would like a large pepperoni.
@@ -73,11 +85,12 @@ people, and everything they remember.
 ```
 src/engine/          Final Rental's engine: software rasterizer, post, input, audio, save
 src/game/world/      the Starlite on paper (layout.js) and as meshes, collision, nav, doors, light
-src/game/sim/        clock, rooms, ledger, phone, desk, tasks, property, breakfast, cars, NPCs,
-                     barks, and the director that plans each night
-src/game/dialogue/   the desk (check-in, payment, keys, checkout, complaints), phone calls, cast
+src/game/sim/        clock, rooms, ledger, phone, desk, tasks, property, vending, breakfast, cars,
+                     NPCs, barks, the director that plans each night, and June's first night
+src/game/dialogue/   the desk (check-in, payment, keys, checkout, complaints), phone calls, cast,
+                     June
 src/game/content/    who comes (people, travelers, groups), how they talk, overheard talk, notes
-src/game/ui/         HUD, menus, the terminal, the key rack, papers and shelves
+src/game/ui/         HUD, menus, the terminal, the key rack, papers and shelves, the machines
 src/game/shift.js    one night: focus, the systems in order, the hooks, the HUD, the handoff
 ```
 
@@ -88,8 +101,11 @@ The tools drive the real game in the pre-installed headless Chromium:
 ```sh
 npm run check                      # boot + a simulated hour, then four check-ins by keyboard
 node tools/autopilot.mjs           # a clerk plays a whole shift through the game's systems
-node tools/autopilot.mjs --shifts=4            # the quiet first night, then crew, ball team, bus
+node tools/autopilot.mjs --shifts=4            # June's first night, then crew, ball team, bus
 node tools/autopilot.mjs --sloppy              # wrong keys, missed wake-ups: see the audit
+node tools/autopilot.mjs --novend --shifts=3    # never touch the machines: see who comes down about it
+node tools/locktest.mjs                         # Escape, Q and the mouse
+node tools/tourtest.mjs                         # night one: June's tour, start to finish
 node tools/uishots.mjs             # screenshots of the note, desk, dialogue, terminal, rack, phone
 ```
 

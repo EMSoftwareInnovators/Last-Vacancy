@@ -182,7 +182,7 @@ export const DOORS = [
   { id: 'pantry', kind: 'interior', hx: -2.45, hz: -8, a: 0, w: 0.9, h: 2.05, into: [0, -1], lv: 0, staff: true },
   { id: 'pantry2', kind: 'interior', hx: -1, hz: -11.1, a: Math.PI / 2, w: 0.9, h: 2.05, into: [-1, 0], lv: 0, staff: true },
   { id: 'laundry', kind: 'room', hx: LAUNDRY.door.x0, hz: NORTH.facade, a: 0, w: 0.9, h: 2.1, into: [0, 1], lv: 0, auto: true, label: 'LAUNDRY' },
-  { id: 'maint', kind: 'steel', hx: MAINT.door.x0, hz: NORTH.facade, a: 0, w: 0.9, h: 2.1, into: [0, 1], lv: 0, staff: true, label: 'MAINTENANCE' },
+  { id: 'maint', kind: 'steel', hx: MAINT.door.x0, hz: NORTH.facade, a: 0, w: 0.9, h: 2.1, into: [0, 1], lv: 0, staff: true, label: 'SUPPLY ROOM' },
 ];
 for (const r of ROOMS) {
   const [hx, hz] = toWorld(r, r.door.x0, 0);
@@ -259,10 +259,18 @@ export const BTRASH = { x0: -1.6, x1: -1.1, z0: -0.7, z1: -0.25 };
 
 /* ---------------- things outside ---------------- */
 export const ICE_MACHINE = { x0: 7.7, x1: 8.8, z0: 33.4, z1: 34.3, top: 1.9 };
+/* The vending machines. `yaw` is the way the front faces (pi: south, out of
+   the alcove; pi/2: east, into the laundry). w, d and h are the cabinet's
+   width across the front, depth and height. */
 export const VENDING = [
-  { id: 'soda', x0: 5.6, x1: 6.5, z0: 33.6, z1: 34.35, top: 1.85 },
-  { id: 'snack', x0: 6.6, x1: 7.5, z0: 33.6, z1: 34.35, top: 1.85 },
+  { id: 'soda', x0: 5.6, x1: 6.5, z0: 33.6, z1: 34.35, top: 1.85, yaw: Math.PI, w: 0.9, d: 0.75, h: 1.85 },
+  { id: 'snack', x0: 6.6, x1: 7.5, z0: 33.6, z1: 34.35, top: 1.85, yaw: Math.PI, w: 0.9, d: 0.75, h: 1.85 },
+  // the soap machine, on the laundry's west wall, facing the washers' aisle
+  { id: 'soap', x0: -1.74, x1: -1.3, z0: 34.3, z1: 35.0, top: 1.6, yaw: Math.PI / 2, w: 0.7, d: 0.44, h: 1.6 },
 ];
+export const VEND_BY_ID = Object.fromEntries(VENDING.map((v) => [v.id, v]));
+/** The supply room's shelf of cases and boxes for the machines, just inside its door. */
+export const VEND_SHELF = { x0: 1.9, x1: 2.5, z0: 32.0, z1: 34.4, top: 1.9 };
 export const NEWS_DROP = { x: 5.4, z: 1.6 };
 /** Sodium lights on poles, and the lamps on the buildings. */
 export const POLES = [
@@ -321,6 +329,8 @@ export const SPOTS = {
   poolDeck: { x: 3.2, z: 28.0, yaw: Math.PI },
   iceStand: { x: 8.25, z: 32.6, yaw: 0 },
   vendStand: { x: 6.05, z: 32.8, yaw: 0 },
+  snackStand: { x: 7.05, z: 32.8, yaw: 0 },
+  soapStand: { x: -0.75, z: 34.65, yaw: -Math.PI / 2 },
   laundryIn: { x: 0.8, z: 33.5 },
 };
 

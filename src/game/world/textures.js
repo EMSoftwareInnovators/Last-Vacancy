@@ -334,7 +334,8 @@ export function buildTextures() {
   });
   T.iceSign = makeTex(64, 16, (g, w, h) => { fill(g, '#123a58', w, h); text(g, 'ICE', w / 2, h / 2 + 1, 11, '#d8f0ff'); noise(g, w, h, 6); });
   T.laundrySign = plate('GUEST LAUNDRY');
-  T.maintSign = plate('EMPLOYEES ONLY', '#efe7d2', '#8a1a14', 6);
+  T.maintSign = plate('SUPPLY ROOM', '#efe7d2', '#8a1a14', 7);
+  T.vendShelfSign = plate('VENDING STOCK', '#efe7d2', '#1a1a1a', 6);
   T.poolRules = makeTex(32, 64, (g, w, h) => {
     fill(g, '#efe7d2', w, h);
     text(g, 'POOL', w / 2, 6, 7, '#123a58');
@@ -953,6 +954,39 @@ export function buildTextures() {
     g.fillStyle = '#9a9a9a'; for (let i = 0; i < 12; i++) g.fillRect(25 + (i % 2) * 3, 8 + Math.floor(i / 2) * 4, 2, 2);
     g.fillStyle = '#1a1a1a'; g.fillRect(4, 52, 18, 7);
     noise(g, w, h, 6);
+  });
+  /* The soap machine in the laundry: three rows, a box of each, a button, a coin slot. */
+  T.soapMachine = makeTex(32, 64, (g, w, h) => {
+    fill(g, '#e8e2cc', w, h);
+    g.fillStyle = '#1e4a8a'; g.fillRect(0, 0, w, 7);
+    text(g, 'SOAP', w / 2, 4, 5, '#fff');
+    const rows = [['#e8761a', '#1e4a8a', 'TIDE'], ['#f0f0f0', '#6a3a9a', 'BOUNCE'], ['#f0f0f0', '#1e6ab8', 'CLOROX']];
+    rows.forEach(([bg, fg, lbl], i) => {
+      const y = 8 + i * 14;
+      g.fillStyle = '#c8c0a8'; g.fillRect(2, y, 28, 12);
+      g.fillStyle = bg; g.fillRect(4, y + 1, 9, 10);
+      g.fillStyle = fg; g.fillRect(5, y + 4, 7, 3);
+      text(g, lbl, 20, y + 4, 3, '#1a1a1a');
+      text(g, i ? '.50' : '.75', 20, y + 9, 3, '#1a1a1a');
+      g.fillStyle = '#3a3a3a'; g.fillRect(26, y + 3, 3, 5);
+    });
+    g.fillStyle = '#6a6e72'; g.fillRect(22, 51, 6, 3);
+    g.fillStyle = '#1a1a1a'; g.fillRect(4, 55, 16, 6);
+    noise(g, w, h, 6); grime(g, w, h, 0.12, 5);
+  });
+  /* A SOLD OUT chip on a button, and an empty spiral in the snack window. */
+  T.soldOut = makeTex(32, 8, (g, w, h) => { fill(g, '#1a0606', w, h); text(g, 'SOLD OUT', w / 2, h / 2 + 1, 6, '#ff3a2a'); });
+  T.emptyCoil = makeTex(16, 8, (g, w, h) => {
+    fill(g, '#22262a', w, h);
+    g.strokeStyle = '#8a8e92'; g.lineWidth = 1;
+    for (let x = 1; x < w; x += 3) { g.beginPath(); g.moveTo(x, 1); g.lineTo(x + 2, h - 1); g.stroke(); }
+  });
+  /* Cases and boxes on the supply room shelf. */
+  T.sodaCases = makeTex(64, 32, (g, w, h) => {
+    const cols = ['#b8201a', '#c8c8c8', '#3a8a3a', '#6a1a2a', '#6a3a1a', '#e02a3a'];
+    for (let i = 0; i < 4; i++) { g.fillStyle = cols[i % cols.length]; g.fillRect(i * 16, 0, 15, 15); g.fillStyle = cols[(i + 3) % cols.length]; g.fillRect(i * 16 + 2, 16, 13, 15); }
+    g.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 4; i++) g.fillRect(i * 16 + 3, 5, 8, 2);
+    noise(g, w, h, 8); grime(g, w, h, 0.15, 5);
   });
   T.machineSide = makeTex(16, 64, (g, w, h) => { fill(g, '#5a5c5e', w, h); noise(g, w, h, 8); });
   T.washer = makeTex(32, 32, (g, w, h) => { fill(g, '#e8e4d8', w, h); g.fillStyle = '#8a8c8e'; g.fillRect(0, 0, w, 6); g.fillStyle = '#c02020'; g.fillRect(3, 2, 3, 2); g.fillStyle = '#6a6e72'; g.fillRect(20, 1, 9, 4); text(g, '75¢', 16, 18, 7, '#1a1a1a'); noise(g, w, h, 5); });

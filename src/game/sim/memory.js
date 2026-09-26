@@ -25,8 +25,9 @@ export function freshMemory() {
     rooms: null,
     inventory: {
       coffee: 4, decaf: 2, milk: 2, oj: 3, muffins: 18, bagels: 12, cereal: 22, fruit: 12, waffleMix: 1,
-      towels: 30, pillows: 14, blankets: 8, toiletries: 20, tp: 24, bulbs: 6, batteries: 8, sodaCases: 2,
+      towels: 30, pillows: 14, blankets: 8, toiletries: 20, tp: 24, bulbs: 6, batteries: 8,
     },
+    vending: null,            // the machines, column by column (see vending.js); filled in on first use
     lastShift: null,
     signFixed: false,
     flags: {},

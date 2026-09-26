@@ -18,7 +18,7 @@ import {
   OFFICE, LOBBY, DESK, BREAKFAST, BACKOFFICE, PANTRY, ARCH, WEST, EAST, NORTH, POOL, POOL_GATE,
   POOL_GATE_N, DUMPSTER, SIGN_POS, STAIRS, ROOMS, FLOOR2, ROOM_W, ROOM_H, LAUNDRY, MAINT, ALCOVE,
   DESK_PROPS, BOARD, LINEN, SUPPLY, MGR_DESK, PANTRY_SHELF, FRIDGE, BFAST_COUNTER, STATIONS, BTABLES,
-  SEATS, NEWS_RACK, BTRASH, ICE_MACHINE, VENDING, POLES, HIGHWAY,
+  SEATS, NEWS_RACK, BTRASH, ICE_MACHINE, VENDING, VEND_BY_ID, POLES, HIGHWAY,
 } from './layout.js';
 import { officeLight, outdoorLight, utilityLight } from './lighting.js';
 import { XBuilder, wall, wall2, floor, ceiling, sign, panel, post, hash2 } from './geo.js';
@@ -183,8 +183,15 @@ function buildOfficeExterior(mb, T) {
   });
   for (const [a, b] of [[0.8, 2.9], [3.9, 6.0]]) {
     const xa = BREAKFAST.x0 + a, xb = BREAKFAST.x0 + b;
-    mb.solid(xa - 0.05, 0.84, -0.12, xb + 0.05, 0.9, 0.1, T.post, [0, 0, 16, 8]);
-    mb.solid(xa - 0.05, 2.1, -0.12, xb + 0.05, 2.15, 0.08, T.bronze, [0, 0, 16, 8]);
+    /* Head and jambs come 2 cm into the room past the inside wall (z -0.12)
+       and read as the frame; flush with it they would share its plane and
+       saw-tooth. Without jambs at all the window is a hole in two thin walls,
+       and at an angle you see into the gap. The sill stops where the inside
+       sill starts. */
+    mb.solid(xa - 0.05, 0.84, -0.1, xb + 0.05, 0.9, 0.1, T.post, [0, 0, 16, 8]);
+    mb.solid(xa - 0.05, 2.1, -0.14, xb + 0.05, 2.15, 0.08, T.bronze, [0, 0, 16, 8]);
+    mb.solid(xa - 0.05, 0.9, -0.14, xa, 2.1, 0.08, T.bronze, [0, 0, 8, 64]);
+    mb.solid(xb, 0.9, -0.14, xb + 0.05, 2.1, 0.08, T.bronze, [0, 0, 8, 64]);
     sign(mb, (xa + xb) / 2, 0.9, -0.05, xb - xa, 1.2, 0, T.glass, F_BLEND);
   }
   // west, south and east faces
@@ -260,7 +267,13 @@ function buildLobby(mb, T) {
   /* ---- the storefront: bronze frame, glass, the door opening ---- */
   const D0 = 3.45, D1 = 4.45;
   const mull = (x) => mb.solid(x - 0.04, 0, -0.08, x + 0.04, 2.38, 0.05, T.bronze, [0, 0, 16, 64]);
-  for (const x of [L.x0 + 0.04, 1.2, 2.3, D0 - 0.04, D1 + 0.04, 5.8, 7.0, L.x1 - 0.04]) mull(x);
+  for (const x of [1.2, 2.3, D0 - 0.04, D1 + 0.04, 5.8, 7.0]) mull(x);
+  /* The two end posts stand a few centimeters proud of the stucco on both
+     faces and run up to the fascia. Flush with the wall, a mullion shares
+     the wall's plane and the two shimmer against each other, and the seam
+     where they meet opens into hairline cracks. */
+  mb.solid(L.x0 - 0.07, 0, -0.1, L.x0 + 0.08, 2.9, 0.08, T.bronze, [0, 0, 16, 64]);
+  mb.solid(L.x1 - 0.08, 0, -0.1, L.x1 + 0.07, 2.9, 0.08, T.bronze, [0, 0, 16, 64]);
   mb.solid(L.x0, 2.3, -0.08, L.x1, 2.38, 0.05, T.bronze, [0, 0, 64, 8]);
   mb.solid(L.x0, 0, -0.08, D0, 0.12, 0.05, T.bronze, [0, 0, 64, 8]);
   mb.solid(D1, 0, -0.08, L.x1, 0.12, 0.05, T.bronze, [0, 0, 64, 8]);
@@ -614,6 +627,9 @@ function buildUtilityInteriors(T, add) {
     for (let i = 0; i < 2; i++) mb.at(R.x1 - 0.55 - i * 0.75, 0, R.z1 - 0.45, Math.PI, (b) => washer(b, T, true));
     mb.solid(R.x1 - 0.7, 0, R.z0 + 1.2, R.x1 - 0.1, 0.85, R.z0 + 2.8, T.formica, [0, 0, 32, 64]);
     panel(mb, R.x0 + 0.08, 1.3, R.z0 + 2.2, 0.6, 0.8, Math.PI / 2, T.corkboard);
+    // the soap machine: Tide, Bounce and Clorox, a quarter at a time
+    const V = VEND_BY_ID.soap;
+    mb.at((V.x0 + V.x1) / 2, 0, (V.z0 + V.z1) / 2, V.yaw, (b) => vendingMachine(b, T, T.soapMachine, V.w, V.d, V.h));
     add('laundryInt', mb, { indoor: true });
   }
   {
@@ -629,7 +645,9 @@ function buildUtilityInteriors(T, add) {
     panel(mb, (R.x0 + R.x1) / 2, 1.0, R.z1 - 0.08, 1.8, 1.2, Math.PI, T.tools);
     panel(mb, R.x1 - 0.08, 1.0, 33.0, 0.34, 0.9, -Math.PI / 2, T.breakerBox);
     mb.box(R.x0 + 0.1, 0, R.z0 + 1.0, R.x0 + 0.7, 1.9, R.z0 + 3.4, { all: { tex: T.steelShelf, uv: [0, 0, 64, 64] }, nx: null, ny: null });
-    for (let k = 0; k < 3; k++) mb.solid(R.x0 + 0.12, 0.2 + k * 0.6, R.z0 + 1.1, R.x0 + 0.65, 0.5 + k * 0.6, R.z0 + 3.3, T.cardboard, [0, 0, 64, 32]);
+    // the vending stock: cases of soda on the bottom two shelves, boxes of snacks and soap on top
+    for (let k = 0; k < 3; k++) mb.solid(R.x0 + 0.12, 0.2 + k * 0.6, R.z0 + 1.1, R.x0 + 0.65, 0.5 + k * 0.6, R.z0 + 3.3, k < 2 ? T.sodaCases : T.cardboard, [0, 0, 64, 32]);
+    panel(mb, R.x0 + 0.72, 1.98, R.z0 + 2.2, 0.62, 0.15, Math.PI / 2, T.vendShelfSign);
     post(mb, R.x1 - 0.5, R.z1 - 0.6, 0, 1.5, 0.28, T.metal, 8);                       // water heater
     mb.solid(R.x1 - 0.8, 0, R.z0 + 0.5, R.x1 - 0.4, 0.34, R.z0 + 0.85, T.bucket, [0, 0, 32, 16]);
     add('maintInt', mb, { indoor: true });
@@ -643,7 +661,7 @@ function buildUtilityInteriors(T, add) {
     wall(mb, A.x1, A.z0, A.x1, A.z1, 0, 2.35, T.blockWall);
     wall(mb, A.x1, A.z1, A.x0, A.z1, 0, 2.35, T.blockWall);
     mb.box(6.6, 2.3, 32.4, 7.8, 2.35, 32.7, { all: { tex: T.lightPanel, uv: [0, 0, 64, 16], flags: F_EMIT } });
-    for (const v of VENDING) mb.at((v.x0 + v.x1) / 2, 0, (v.z0 + v.z1) / 2, Math.PI, (b) => vendingMachine(b, T, v.id === 'soda' ? T.sodaMachine : T.snackMachine));
+    for (const v of VENDING.filter((m) => m.id !== 'soap')) mb.at((v.x0 + v.x1) / 2, 0, (v.z0 + v.z1) / 2, v.yaw, (b) => vendingMachine(b, T, v.id === 'soda' ? T.sodaMachine : T.snackMachine, v.w, v.d, v.h));
     const I = ICE_MACHINE;
     mb.at((I.x0 + I.x1) / 2, 0, (I.z0 + I.z1) / 2, Math.PI, (b) => iceMachine(b, T));
     add('alcove', mb);

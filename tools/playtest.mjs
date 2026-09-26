@@ -28,9 +28,9 @@ const faceGuest = async () => { const g = await ev(() => { const f = window.__ga
 await ev(() => { window.__game.sound.muted = true; });
 await key('Enter');
 await wait(900);
-await key('KeyQ');
+for (const k of ['Digit2', 'Digit2', 'Digit1']) await key(k);   // June: "Skip the tour."
 await wait(200);
-check('note closed, playing', (await state()).mode === null);
+check('skipped June\'s tour, playing', (await state()).mode === null);
 
 async function checkInOne(round) {
 // fast-forward to the next guest at the counter

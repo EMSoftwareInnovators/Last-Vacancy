@@ -1,8 +1,7 @@
 /* ============================================================
    property.js -- the parts of the Starlite that are not rooms.
 
-   The ice machine, which jams. The drink machine, which now and
-   then keeps somebody's dollar. The pool gate, which the parish
+   The ice machine, which jams. The pool gate, which the parish
    says has to be shut and latched at ten. The trash in the lobby.
    The bundle of newspapers the Ledger's man throws at the office
    door at five in the morning without slowing down.
@@ -17,8 +16,6 @@ export class Property {
   constructor(shift) {
     this.s = shift;
     this.ice = { level: 1, jammed: false };
-    this.soda = { stock: [6, 8, 3, 7, 0, 5], coins: 0, eats: false, empty: false };
-    this.snack = { coins: 0 };
     this.gate = { mustLock: false, locked: false };
     this.trash = { lobby: 0.35, breakfast: 0.1 };
     this.news = { state: 'none', count: 0, taken: 0, at: null };
@@ -35,28 +32,7 @@ export class Property {
     this.s.g.sound.iceDrop(0, 0.8);
   }
 
-  /* ---------------- vending ---------------- */
-  /** Somebody buys a soda. Returns true if the machine kept their money. */
-  vend(p) {
-    const ate = this.soda.eats || this.soda.stock.every((n) => n === 0);
-    if (!ate) {
-      const i = this.soda.stock.findIndex((n) => n > 0);
-      this.soda.stock[i]--;
-      this.soda.coins += 0.6;
-      this.s.ledger.vendingMeter += 0.6;
-    } else {
-      this.soda.coins += 0.6;              // it took the money all right
-      this.s.ledger.vendingMeter += 0.6;
-    }
-    if (this.soda.stock.filter((n) => n === 0).length >= 3) this.soda.empty = true;
-    return ate;
-  }
-  refillSoda() { this.soda.stock = this.soda.stock.map((n) => Math.max(n, 8)); this.soda.empty = false; this.soda.eats = false; }
-  collectCoins() {
-    const amt = Math.round((this.soda.coins + this.snack.coins) * 100) / 100;
-    this.soda.coins = 0; this.snack.coins = 0;
-    return amt;
-  }
+  /* The drink, snack and soap machines are vending.js's. */
 
   /* ---------------- newspapers ---------------- */
   newsDelivered(count) {

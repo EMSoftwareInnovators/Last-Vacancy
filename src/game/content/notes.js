@@ -12,6 +12,7 @@
 import { money } from '../dialogue/runner.js';
 
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 /** The first night: the note that is waiting on the desk when you start. */
 export function firstNote() {
@@ -34,7 +35,9 @@ export function juneNote(r) {
   const bad = r.missedWakes + r.privacy + r.drawerOff + r.wrongKeys + r.lostGuests + (r.walkedReservation || 0);
   const k = r.shiftNo || 1;
   const pick = (arr) => arr[k % arr.length];
-  if (bad === 0 && r.checkins > 0) out.push(pick([
+  if (r.trained) out.push(bad === 0 ? 'I was there, so you already know how it went. I\'m writing it down anyway, because that\'s what I do. Nothing on the audit.'
+    : 'I was there, so you already know. I\'m writing it down anyway, because that\'s what I do:');
+  else if (bad === 0 && r.checkins > 0) out.push(pick([
     'Went through the folios. Went through the drawer. Went through them again, because I didn\'t believe it the first time.',
     'Audit balanced. I checked it with a pencil. It still balanced.',
     'Nothing on the audit. I read it twice looking for the catch. There is always a catch. I\'ll find it Tuesday.',
@@ -65,6 +68,12 @@ export function juneNote(r) {
   if (r.noVacancyMiss) out.push('We were full and the sign still said VACANCY. People pulled in to find that out. The switch is by the key rack.');
   if (r.turnedAwayWithRooms) out.push('You sent somebody up the road to the Ramada with clean rooms on the rack. The Ramada thanks you.');
   if (r.walkedReservation) out.push('Somebody with a reservation got walked. That is the one thing we do not do. I called them myself this morning.');
+  // the machines
+  if (r.vendHeld > 0) out.push(`There was ${money(r.vendHeld)} in coin boxes in your shirt pocket at seven. Coins go in the register. I'm writing that down so it's written down.`);
+  if (r.vendOut && r.vendOut.length) out.push(`${cap(r.vendOut.join(' and '))} ${r.vendOut.length > 1 ? 'were' : 'was'} still out of things at seven.${r.vendLost >= 3 ? ` ${r.vendLost} times somebody put money in and got it handed back.` : ''} Supply room, steel door, the shelf inside.`);
+  if (r.vendFull && r.vendFull.length) out.push(`The coin box in ${r.vendFull.join(' and ')} was full, which means it spent the night handing people back their quarters.`);
+  if (r.vendJam) out.push('The drink machine was eating money when Travis came in. Open it up and clear it.');
+  if (r.vendRung > 0 && !(r.vendOut && r.vendOut.length) && !(r.vendFull && r.vendFull.length) && !r.vendHeld) out.push('The machines were full and the coins were in the drawer. That\'s the whole job, with the machines. Most people take a month.');
   if (r.calledJune > 1) out.push('You called me at home. Twice. If nothing\'s on fire, write it down.');
   if (out.length < 3) {
     const filler = [
@@ -75,7 +84,7 @@ export function juneNote(r) {
     ];
     out.push(r.pruitts ? 'The Pruitt boy wrote on the breakfast table in syrup. I don\'t blame you for that. I just wanted somebody else to know.' : filler[(r.shiftNo || 1) % filler.length]);
   }
-  out.push(r.shiftNo <= 1 ? 'Same time tonight.' : 'Same time tonight. Don\'t let the waffle iron win.');
+  out.push(r.trained ? 'Tomorrow night it\'s just you. Same time.' : r.shiftNo <= 1 ? 'Same time tonight.' : 'Same time tonight. Don\'t let the waffle iron win.');
   return out;
 }
 
@@ -96,6 +105,7 @@ export function reportHtml(r) {
       ${row('Wake-up calls', `${r.wakesMade} made${r.missedWakes ? `, ${r.missedWakes} missed` : ''}`, r.missedWakes ? 'bad' : '')}
       ${row('Requests handled', `${r.tasksDone}${r.tasksLeft ? `, ${r.tasksLeft} still on the notepad` : ''}`, r.tasksLeft ? 'bad' : '')}
       ${row('Drawer at audit', r.audited ? (r.drawerOff ? `${r.drawerDelta < 0 ? 'short' : 'over'} ${money(Math.abs(r.drawerDelta))}` : 'balanced') : 'audit not run', r.drawerOff || !r.audited ? 'bad' : 'ok')}
+      ${row('Vending', `${r.vendSold || 0} sold${r.vendRung ? `, ${money(r.vendRung)} rung in` : ''}${r.vendHeld ? `, ${money(r.vendHeld)} never rung in` : ''}${r.vendOut && r.vendOut.length ? '; ' + r.vendOut.map((m) => m.replace(/^the /, '')).join(', ') + ' out of things' : ''}`, r.vendHeld || (r.vendOut && r.vendOut.length) ? 'bad' : '')}
       ${row('Coffee', `${r.pots} pot${r.pots === 1 ? '' : 's'}, ${r.cups} cups`)}
       ${row('Breakfast', `${r.plates} plates, ${r.waffles} waffles${r.spills ? `, ${r.spills} spills` : ''}`)}
     </table>

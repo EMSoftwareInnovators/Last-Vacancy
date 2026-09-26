@@ -316,6 +316,7 @@ function pillowThanks(s, p, task) {
    THE STAFF
    ============================================================ */
 export function staffNode(s, p) {
+  if (p.rosterId === 'JUNE') return s.training ? s.training.talkNode() : say(p, 'Go home. I mean it.', ok('Night, June.'));
   if (p.rosterId === 'LUZ') return luz(s, p);
   if (p.rosterId === 'TRAVIS') return travis(s, p);
   return say(p, 'Morning.', ok('Morning.'));

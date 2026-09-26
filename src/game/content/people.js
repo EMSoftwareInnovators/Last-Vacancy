@@ -397,6 +397,19 @@ export const PEOPLE = [
   },
 
   /* ---------------- the staff ---------------- */
+  /* The owner. She leaves a note on every shift but the first; the first
+     one, she works with you, start to finish. */
+  {
+    id: 'JUNE', name: 'June Whitfield', tag: 'owns the Starlite',
+    kind: 'staff', seed: 0x10E55,
+    app: {
+      gender: 'f', height: 'average', build: 'average', facial: 'clean', glasses: 'square', hat: 'none',
+      gait: 'brisk', carry: 'none', voice: 'raspy',
+      hair: H('gray', 'gray', '#8f8a82', '#5f5a54', 'short', 'short and gray, set Saturdays'),
+      jacket: J('plum', 'plum', '#4a2438', 'cardigan'), pants: C('navy', 'navy', '#1e2a4a'),
+      shirt: C('cream', 'cream', '#c8bd9c'), skin: '#e0b48e',
+    },
+  },
   {
     id: 'LUZ', name: 'Luz Ortega', tag: 'head housekeeper',
     kind: 'staff', seed: 0x10272,

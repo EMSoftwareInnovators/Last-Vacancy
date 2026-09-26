@@ -19,6 +19,7 @@ import { ACCOUNTS, withTax, nightly } from '../sim/ledger.js';
 import { BED_LABEL } from '../world/layout.js';
 import { Clock } from '../sim/clock.js';
 import { makeItem } from '../sim/items.js';
+import { PRODUCTS, MACHINES } from '../sim/vending.js';
 
 const YOU = { name: 'YOU' };
 const L = (s, p, k, ...a) => lineFor(p, k, s, ...a);
@@ -588,7 +589,8 @@ export function complaintNode(s, p) {
     case 'beds': return moveNode(s, p, c, 'There\'s one bed. There are four of us, and one bed. I said two beds. I\'m almost sure I said two beds.', (r) => r.beds === 'QQ');
     case 'smell': return moveNode(s, p, c, 'The room smells like an ashtray. Like, like the inside of an ashtray. I asked for non-smoking.', (r) => !r.smoking);
     case 'noiseAc': return moveNode(s, p, c, 'The air conditioner in my room sounds like a truck downshifting. Every nine seconds. I timed it.', (r) => !r.traits.includes('noisyAC'), true);
-    case 'refund': return refundNode(s, p, c);
+    case 'refund': return vendingNode(s, p, { machine: 'soda', why: 'ate', product: 'coke' });
+    case 'vending': return vendingNode(s, p, c);
     case 'ice': return beat(p, 'The ice machine\'s not giving any ice. It\'s making a noise like it wants to, but it isn\'t.', 'I\'ll go take a look at it.', () => {
       s.tasks.add({ kind: 'ice', text: 'Clear the ice machine (north end, by the vending)', where: 'ice' });
       s.finishDesk(p, 'complaint');
@@ -639,30 +641,85 @@ function moveNode(s, p, c, text, fits, canFix) {
   return say(p, text, choices);
 }
 
-function refundNode(s, p, c) {
-  return say(p, 'The drink machine took my money. Sixty cents. It lit up and everything, and then nothing. I hit it. Politely.', [
-    reply('(Write a paid-out slip and give them sixty cents from the drawer.)', () => {
-      s.ledger.payOut(0.6, 'VENDING REFUND', true);
-      s.g.sound.cashDrawer(); s.g.sound.pen();
-      s.property.soda.eats = true;
-      s.stats.refunds++;
-      s.finishDesk(p, 'complaint');
-      return say(p, 'Thanks. It\'s the principle. It\'s not the sixty cents. It\'s a little bit the sixty cents.', [reply('I\'ll put a sign on it.', () => null)]);
+/* ============================================================
+   THE MACHINES
+   Somebody walked all the way down from their room about a Coke.
+   ============================================================ */
+function vendingNode(s, p, c) {
+  const M = MACHINES[c.machine], P0 = PRODUCTS[c.product] || PRODUCTS[M.slots[0]];
+  const P = { ...P0, label: P0.spoken || P0.label };      // what people call it out loud
+  const V = s.vending;
+  const task = (why, text) => {
+    if (!s.tasks.find((t) => t.kind === 'vend' && t.machine === c.machine && t.why === why)) {
+      s.tasks.add({ kind: 'vend', machine: c.machine, why, where: c.machine, text });
+    }
+  };
+  const done = (text, label = 'Good night.') => { s.finishDesk(p, 'complaint'); return say(p, text, [reply(label, () => null)]); };
+  const fixName = M.name.replace(/^the /, '');
+  if (c.why === 'ate') {
+    const price = P.price;
+    const out = [
+      reply(`(Write a paid-out slip and give them ${money(price)} from the drawer.)`, () => {
+        s.ledger.payOut(price, 'VENDING REFUND', true);
+        s.g.sound.cashDrawer(); s.g.sound.pen();
+        s.stats.refunds++;
+        task('ate', `Clear the jam in the ${fixName} (it's eating money)`);
+        return done('Thanks. It\'s the principle. It\'s not the sixty cents. It\'s a little bit the sixty cents.', 'I\'ll go fix it.');
+      }),
+      reply(`(Give them ${money(price)} out of your own pocket.)`, () => {
+        s.stats.ownPocket = (s.stats.ownPocket || 0) + price;
+        task('ate', `Clear the jam in the ${fixName} (it's eating money)`);
+        return done('Oh -- you don\'t have to -- well. Thank you.', 'It\'s all right.');
+      }),
+      reply('I\'m sorry. I\'ll go see what\'s stuck in it.', () => {
+        p.mood -= 5;
+        task('ate', `Clear the jam in the ${fixName} (it's eating money)`);
+        return done('And the sixty cents? ...No. Okay. Okay.', 'Sorry.');
+      }),
+    ];
+    return say(p, `${cap(M.name)} took my money. ${money(price)}. It lit up and everything, and then nothing. I hit it. Politely.`, out);
+  }
+  if (c.why === 'full') {
+    return say(p, c.machine === 'soap'
+      ? 'The soap machine won\'t take my quarters. They go in the top and come straight out the bottom. I have a load of whites sitting in the washer, dry, waiting on it.'
+      : `${cap(M.name)} won't take quarters. They go in, and they come right back out the bottom. I tried a dollar. It gave the dollar back like it was offended.`, [
+      reply('The coin box is full -- that\'s on me. I\'ll go empty it.', () => {
+        task('full', `Empty the coin box in the ${fixName}`);
+        p.mood -= 1;
+        return done('A full coin box. At a motel. Huh. Okay.', 'Give me ten minutes.');
+      }),
+      reply('It does that. Try it again in the morning.', () => {
+        p.mood -= 7;
+        return done('In the morning. I wanted it now. That\'s the whole thing about a machine.', 'Sorry.');
+      }),
+    ]);
+  }
+  // sold out, and somebody already said they'd fill it
+  const empties = V.empties(c.machine);
+  const promised = s.tasks.find((t) => t.kind === 'vend' && t.machine === c.machine && t.why === 'empty');
+  if (promised) {
+    return say(p, `${cap(M.name)}'s still out of ${P.label}. ${promised.created < s.clock.min - 90 ? 'It\'s been out since I got here, and I got here a while ago.' : 'The man next door said somebody said they\'d fill it.'}`, [
+      reply('I\'m sorry -- I\'ll go fill it right now.', () => { p.mood -= 3; return done('Right now. Okay. I\'ll give it ten minutes.', 'Ten minutes.'); }),
+      reply('It\'s on my list.', () => { p.mood -= 8; return done('It\'s on a list. Good. I\'ll drink the list.', 'Sorry.'); }),
+    ]);
+  }
+  let text;
+  if (c.machine === 'soap') text = `There's no ${P.short === 'TIDE' ? 'soap' : P.label.toLowerCase()} in the soap machine. I've got a load of whites in the washer, sitting there in their natural state.`;
+  else if (c.machine === 'snack') text = empties.length >= 3 ? 'The snack machine\'s got nothing I want in it, which is fine, but it\'s also got nothing anybody wants in it. It\'s just Nabs. Row after row of Nabs.' : `The snack machine's out of ${P.label}. I put my money in, it gave it back, and a little light came on. The light said SOLD OUT. I know. I can see.`;
+  else { const o = PRODUCTS[empties.find((k) => k !== c.product) || empties[0]]; text = `Your drink machine's out of ${P.label}. I pushed ${P.label}, it gave me my money back and a little red light.${empties.length > 1 ? ` I pushed ${o.spoken || o.label}. Same light.` : ''}`; }
+  const choices = [
+    reply('I\'ll fill it tonight. Sorry about that.', () => {
+      task('empty', `Fill the ${fixName} (${empties.map((k) => PRODUCTS[k].short.toLowerCase()).join(', ') || P.short.toLowerCase()} out)`);
+      return done(c.machine === 'soap' ? 'Tonight. Okay. The whites will wait. The whites have nowhere to be.' : 'Tonight. Okay. I\'ll come back down.', 'I\'ll get it.');
     }),
-    reply('(Give them sixty cents out of your own pocket.)', () => {
-      s.stats.ownPocket = (s.stats.ownPocket || 0) + 0.6;
-      s.property.soda.eats = true;
-      s.finishDesk(p, 'complaint');
-      return say(p, 'Oh -- you don\'t have to -- well. Thank you.', [reply('It\'s all right.', () => null)]);
+    reply(c.machine === 'soap' ? 'There\'s a laundromat in town. Opens at eight.' : 'Try the Texaco. It\'s two miles up.', () => {
+      p.mood -= 7;
+      return done(c.machine === 'soap' ? 'At eight. It\'s eleven.' : 'Two miles. For a Coke. Okay.', 'Sorry.');
     }),
-    reply('The vending company handles refunds. There\'s a number on the machine.', () => {
-      p.mood -= 8;
-      s.property.soda.eats = true;
-      s.finishDesk(p, 'complaint');
-      return say(p, 'There\'s a number. On the machine. Okay. I\'ll call the number on the machine at midnight about sixty cents.', [reply('Sorry.', () => null)]);
-    }),
-  ]);
+  ];
+  return say(p, text, choices);
 }
+const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 function lateWakeNode(s, p, c) {
   return say(p, `I asked for a wake-up at ${Clock.label(c.at)}. It's ${s.clock.label()}. I asked for it, you wrote it down, I watched you write it down.`, [

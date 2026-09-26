@@ -59,9 +59,7 @@ export class Ledger {
     this.slips = [];          // imprinted card slips, in the box under the counter
     this.vouchers = [];       // company vouchers, in the envelope
     this.paidOuts = [];       // money out of the drawer, with or without a slip
-    this.vendingBag = 0;      // coins pulled from the machines, not yet in the drawer
-    this.vendingIn = 0;       // coins that made it into the drawer
-    this.vendingMeter = 0;    // what the machines' own counters say they took
+    this.vendingIn = 0;       // coin boxes from the machines, rung into the drawer
     this.tips = 0;            // yours, not the drawer's
     this.roomTaxPosted = false;
     this.nextFolio = 4410;

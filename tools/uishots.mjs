@@ -8,9 +8,8 @@ const shot = async (name) => { await T.wait(350); await T.page.screenshot({ path
 await T.ev(() => { window.__game.sound.muted = true; });
 await T.page.keyboard.press('Enter');
 await T.wait(900);
-await shot('01-note');
-await T.page.keyboard.press('KeyQ');           // put June's note down
-await T.wait(200);
+await shot('01-june');
+for (const k of ['Digit2', 'Digit2', 'Digit1']) { await T.page.keyboard.press(k); await T.wait(150); }   // skip the tour
 // run until somebody is at the desk
 await T.ev(() => {
   const s = window.__game.shift;

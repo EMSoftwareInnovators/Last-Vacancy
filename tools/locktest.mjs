@@ -33,11 +33,16 @@ const eaten = async () => { await exitLock(); await wait(300); };
 /** ...and as a browser that drops the lock and then passes the key on anyway. */
 const handed = async () => { await exitLock(); await page.keyboard.press('Escape'); await wait(300); };
 
-await press('Enter'); await wait(700);                     // clock in: June's note is open
-check("June's note is up", (await st()).mode === 'paper');
-await press('KeyQ');
+await press('Enter'); await wait(700);                     // clock in: night one, June is at the desk
+check('June is talking', (await st()).mode === 'talk');
+if (!(await st()).locked) await relock();
+await eaten();
+check('Escape while she talks pauses', (await st()).state === 'PAUSE' && /Back to the conversation/.test(await panel()));
+await press('Enter');
+check('...and Enter goes back to her', (await st()).state === 'PLAY' && (await st()).mode === 'talk');
+for (const k of ['Digit2', 'Digit2', 'Digit1']) await press(k);   // skip the tour
 let s = await st();
-check('Q puts the note down', s.state === 'PLAY' && !s.mode, JSON.stringify(s));
+check('skipping the tour: talk over, playing', s.state === 'PLAY' && !s.mode, JSON.stringify(s));
 await calls();
 if (!s.locked) await relock();
 s = await st();

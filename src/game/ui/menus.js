@@ -127,7 +127,8 @@ export function howToHtml() {
       <li><b>Requests</b> go on your notepad (${glyphText('notes')}). Linen and supplies are in the back office.</li>
       <li><b>Wake-ups</b> go on the sheet by the phone. When one is due, pick up the phone and call the room.</li>
       <li><b>Night audit</b> at three: ${'F5'}.</li>
-      <li><b>Breakfast</b> from half past four: the pantry has coffee, trays and waffle mix; its fridge has juice and milk.</li>
+      <li><b>Breakfast</b> from half past four: coffee, trays, waffle mix in the pantry; juice and milk in its fridge.</li>
+      <li><b>Machines</b> (drink, snack, laundry soap) are yours: open one to see what's out, get stock off the shelf in the supply room by the laundry, load it. Full machine: pull the coin box, ring it in.</li>
       <li><b>Quiet?</b> Sit on the stool (${glyphText('wait')}) and the night goes faster.</li>
     </ul>
   </div>

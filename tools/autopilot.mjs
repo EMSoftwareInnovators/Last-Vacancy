@@ -1,7 +1,7 @@
 // A clerk who never gets tired: plays a whole shift through the game's own
 // systems (not the keyboard), fast, and reports what happened. It is a test,
 // not a strategy guide -- it answers every question the first way offered.
-//   node tools/autopilot.mjs [--until=7:30] [--sloppy]
+//   node tools/autopilot.mjs [--until=7:30] [--sloppy] [--novend (never touch the machines)] [--shifts=N]
 import { launch } from './pw.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')).map(([k, v]) => [k, v === undefined ? true : v]));
@@ -9,7 +9,7 @@ const T = await launch();
 await T.ev(() => { window.__game.sound.muted = true; });
 await T.page.keyboard.press('Enter');
 await T.wait(800);
-await T.page.keyboard.press('KeyQ');           // put June's note down
+await T.ev(() => { const s = window.__game.shift; if (s.training) s.training.skipNow(); else s.closeOverlay(); });   // June's tour, or the note
 await T.wait(100);
 
 const result = await T.ev(async (opts) => {
@@ -61,6 +61,7 @@ const result = await T.ev(async (opts) => {
       s.talkTo(p); converse();
       return;
     }
+    if (p.complaint) say(`${p.name} at the desk: ${p.complaint.kind}${p.complaint.machine ? ` ${p.complaint.machine} ${p.complaint.why} (${p.complaint.product})` : ''}`);
     converse(null, (ch) => { const i = label(ch, /Let me move you|I'll|right over|I'm so sorry|Write a paid-out/); return i >= 0 ? i : 0; });
     // a room move or the wrong key: a key is wanted now
     if (p.ci && p.ci.stage === 'key' && s.desk.line.includes(p)) {
@@ -183,14 +184,35 @@ const result = await T.ev(async (opts) => {
           break;
         }
         case 'noise': if (p) { s.answerDoor(g.doors.room(t.room), p, t); converse(); } else s.tasks.complete(t); break;
+        case 'vend': if (!opts.novend) serviceMachine(t.machine); break;
         case 'ice': s.clearIce(); break;
         case 'gate': s.useGate('gateS'); s.useGate('gateN'); break;
         case 'breaker': s.resetBreaker(); break;
         case 'sign': s.fixSign(); break;
         default: s.tasks.complete(t);
       }
-      say(`task: ${t.text} -> ${t.status}`);
+      if (!(opts.novend && t.kind === 'vend')) say(`task: ${t.text} -> ${t.status}`);
     }
+  }
+
+  /** Fill a machine from the supply room shelf, clear it, pull the coins, ring them in. */
+  function serviceMachine(id) {
+    const V = s.vending;
+    if (V.machine(id).jam) V.clearJam(id);
+    for (const k of V.def(id).slots) {
+      if (V.count(id, k) >= V.def(id).cap) continue;
+      const pk = V.takePack(k);
+      if (!pk) continue;
+      V.load(id, pk);
+      if (pk.qty > 0) V.putBack(pk);
+    }
+    if (V.readyForCoins(id) && V.machine(id).coins > 0.01) {
+      const amt = V.pullCoins(id);
+      s.giveItem(makeItem('vendCoins', { machine: id, title: V.def(id).title, amount: amt }), true);
+      park(); s.useRegister();
+      say(`serviced ${id}: rang in $${amt.toFixed(2)}`);
+    } else say(`serviced ${id}`);
+    V.checkTasks();
   }
 
   function audit() {
@@ -261,6 +283,8 @@ const result = await T.ev(async (opts) => {
         wakeUps();
         if (ticks % 40 === 0) doTasks();
         if (s.clock.past(3, 5)) audit();
+        // a clerk who knows the job walks the machines once in the small hours
+        if (s.clock.past(3, 30) && !s._apVend && !opts.sloppy && !opts.novend) { s._apVend = true; for (const id of ['soda', 'snack', 'soap']) serviceMachine(id); }
         if (s.clock.past(4, 50) && !s.clock.past(7, 0)) breakfastPrep();
         if (s.clock.past(5, 0)) keyDrop();
         const luz = s.npcs.find('LUZ');
@@ -282,6 +306,8 @@ const result = await T.ev(async (opts) => {
   return {
     log, errs, ticks, end: s.clock.label(), over: s.shiftOver, state: g.state,
     stats: { checkins: st.checkins, checkouts: st.checkouts, calls: st.calls, missedCalls: st.missedCalls, wakes: st.wakesMade, wakeMissed: st.wakeMissed, tasksDone: st.tasksDone, drawer: st.drawerDelta, rackOff: st.rackOff, pots: st.pots, spills: st.spills, waffle: st.waffleIncidents },
+    vending: s.vending.summary(),
+    june: s.training ? { phase: s.training.phase, said: [...s.training.said] } : null,
     served: s.breakfast.served, shortages: s.breakfast.shortages,
     desk: s.desk.line.map((p) => `${p.name}:${p.deskReason}:${p.ci ? p.ci.stage : ''}`),
     stuck: s.npcs.list.filter((p) => !p.hidden && p.stuckT > 2).map((p) => `${p.name}@${p.x.toFixed(1)},${p.z.toFixed(1)} ${p.act && p.act.kind}`),

@@ -45,6 +45,7 @@ export class Clock {
   }
 
   update(dt) {
+    if (this.hold) return 0;          // June is showing you round; the night waits
     const p = this.period();
     const before = this.min;
     this.min += (dt / p.spm) * this.slow * this.fast;

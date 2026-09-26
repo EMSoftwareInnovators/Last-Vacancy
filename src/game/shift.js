@@ -29,6 +29,8 @@ import { Desk } from './sim/desk.js';
 import { Phone } from './sim/phone.js';
 import { Tasks, WakeSheet } from './sim/tasks.js';
 import { Property } from './sim/property.js';
+import { Vending, PRODUCTS, MACHINES } from './sim/vending.js';
+import { Training } from './sim/training.js';
 import { Breakfast } from './sim/breakfast.js';
 import { Barks } from './sim/barks.js';
 import { Director } from './sim/director.js';
@@ -42,6 +44,7 @@ import { Interact, MOP_HOME } from './interact.js';
 import { Terminal } from './ui/terminal.js';
 import { Board } from './ui/board.js';
 import { newsHtml } from './ui/papers.js';
+import { VendPanel, StockShelf } from './ui/vendpanel.js';
 import { choicesHtml } from './ui/ui.js';
 import { XBuilder, panel } from './world/geo.js';
 import { F_EMIT } from '../engine/raster.js';
@@ -68,6 +71,8 @@ export class Shift {
     this.tasks = new Tasks(this);
     this.wakeups = new WakeSheet(this);
     this.property = new Property(this);
+    this.vending = new Vending(this);
+    this.training = null;          // night one: June, in person (see training.js)
     this.breakfast = new Breakfast(this);
     this.barks = new Barks(this);
     this.director = new Director(this);
@@ -145,13 +150,20 @@ export class Shift {
     const p = g.player;
     p.x = SPOTS.clerk.x; p.z = SPOTS.clerk.z; p.yaw = 0; p.pitch = -0.12;
     this.interact = new Interact(this);
+    if (this.memory.shiftNo > 1) this.vending.daySales();
     this.director.setup();
     this.rooms.refreshGlow();
     g.state = ST.PLAY;
     g.ui.setHudVisible(true);
     g.ui.cinema(false);
     g.fade = 1; g.fadeTo = 0;
-    this.openPaper(noteHtml(this.juneLines, { date: this.memory.shiftNo === 1 ? 'on the back of a Sysco invoice, paper-clipped to the terminal' : 'on the back of last night\'s D-report', foot: `${g.ui.keyHint('back')} put it down and clock in` }));
+    if (this.memory.shiftNo === 1) {
+      // the first night of the job: no note. June is at the desk, and she is staying.
+      this.training = new Training(this);
+      this.training.begin();
+    } else {
+      this.openPaper(noteHtml(this.juneLines, { date: 'on the back of last night\'s D-report', foot: `${g.ui.keyHint('back')} put it down and clock in` }));
+    }
     g.wantLock = true;
     g.grabLock();
   }
@@ -188,12 +200,14 @@ export class Shift {
     /* ---- the systems ---- */
     this.director.update(dt);
     this.npcs.update(dt);
+    if (this.training) this.training.update(dt);
     const vis = this.npcs.list.filter((p) => !p.hidden);
     this.cars.update(dt, vis, g.player);
     this.desk.update(dt);
     this.phone.update(dt);
     this.wakeups.update();
     this.property.update(dt);
+    this.vending.update();
     this.breakfast.update(dt);
     this.barks.update(dt);
     this.faceSpeaker(dt);
@@ -212,7 +226,14 @@ export class Shift {
         if (input.hit('KeyQ', 'UiBack', 'KeyE', 'Enter', 'Space', 'Backspace') || (g.input.mousePressed[0] && g.input.locked)) this.closeOverlay();
         break;
       }
-      case 'picker': if (!this.picker.handle(input)) this.closeOverlay(); else g.ui.showPaper(this.picker.render()); break;
+      case 'picker':
+        if (!this.picker.handle(input)) this.closeOverlay();
+        else {
+          g.ui.showPaper(this.picker.render());
+          // a long shelf scrolls: keep the highlighted line on the page
+          if (this.picker.sel !== this.picker._shownSel) { this.picker._shownSel = this.picker.sel; const r = document.querySelector('#paper tr.sel'); if (r) r.scrollIntoView({ block: 'nearest' }); }
+        }
+        break;
       default: this.updateWorld(dt); break;
     }
 
@@ -446,6 +467,7 @@ export class Shift {
 
   finishDesk(p, reason) {
     this.desk.finish(p);
+    if (reason === 'complaint' || reason === 'question') p.complaint = null;
     if (reason === 'checkin') {
       if (p.rekey) { p.rekey = false; return; }      // a new key for a stay already under way
       const ci = p.ci;
@@ -526,8 +548,10 @@ export class Shift {
       this.npcs.interrupt(p, exitRoom());
       p.queue.splice(1, 0, walkTo(SPOTS.lobbyIn.x, SPOTS.lobbyIn.z, 0), toDesk('complaint'), enterRoom(), inRoom(p.bedAt));
     } else {
+      // out and about (the ice, a machine): to the desk, then back the way they were already going
+      const wayBack = p.queue.some((a) => a.kind === 'enterRoom');
       this.npcs.interrupt(p, walkTo(SPOTS.lobbyIn.x, SPOTS.lobbyIn.z, 0));
-      p.queue.splice(1, 0, toDesk('complaint'), enterRoom(), inRoom(p.bedAt));
+      p.queue.splice(1, 0, toDesk('complaint'), ...(wayBack ? [] : [enterRoom(), inRoom(p.bedAt)]));
     }
   }
 
@@ -647,7 +671,7 @@ export class Shift {
     const due = this.wakeups.pending().filter((w) => w.at <= this.clock.min + 12);
     const choices = due.slice(0, 3).map((w) => reply(`Call ${w.room} -- wake-up, ${Clock.label(w.at)}`, () => { this.g.sound.dialTone(w.room); return wakeCall(this, w); }));
     choices.push(reply('Call a room...', () => this.roomPicker(0, (st) => this.callRoom(st))));
-    choices.push(reply('Call June at home', () => callJune(this)));
+    if (!(this.training && this.training.active)) choices.push(reply('Call June at home', () => callJune(this)));
     choices.push(reply('(Put the phone down.)', () => null));
     const who = { name: 'DIAL TONE' };
     this.mode = 'phone';
@@ -728,6 +752,8 @@ export class Shift {
   registerPrompt() {
     const sale = this.pendingSale, pl = this.g.player;
     if (sale && !sale.rung && pl.cash.tendered > 0.004) return `Ring up ${money(sale.amount)} -- Rm ${sale.folio.room} (${sale.tc ? 'traveler\'s checks' : 'cash'} ${money(sale.tendered)})`;
+    const boxes = this.heldAll('vendCoins');
+    if (boxes.length) return `Ring in the vending coins (${money(boxes.reduce((a, b) => a + b.amount, 0))})`;
     if (this.tasks.find((t) => t.kind === 'change') && !this.heldOf('coinBag')) return 'Make change: a roll of quarters';
     if (pl.cash.tendered > 0.004) return 'Put the loose cash in the drawer';
     return null;
@@ -746,6 +772,19 @@ export class Shift {
       const p = sale.p;
       if (change <= 0.004 && p.ci && p.ci.stage === 'cash') p.ci.stage = 'key';
       this.pendingSale = null;
+      return;
+    }
+    const boxes = this.heldAll('vendCoins');
+    if (boxes.length) {
+      const amt = round2(boxes.reduce((a, b) => a + b.amount, 0));
+      L.ringUp(amt);
+      L.vendingIn = round2(L.vendingIn + amt);
+      this.vending.rungIn = round2(this.vending.rungIn + amt);
+      for (const b of boxes) this.removeHeld(b);
+      snd.registerBeep(); snd.coins(0, 0.8); snd.cashDrawer();
+      this.toast(`${money(amt)} in vending coins, rung in. The audit will expect it in the drawer.`, 'good');
+      this.log(`Rang ${money(amt)} in vending coins into the register.`, 'plain');
+      if (this.training) this.training.event('coinsRung', { amt });
       return;
     }
     if (this.tasks.find((t) => t.kind === 'change')) {
@@ -834,25 +873,25 @@ export class Shift {
     const t = this.tasks.find((x) => x.kind === 'ice'); if (t) this.tasks.complete(t);
     this.toast('Cleared a block of ice the size of a shoebox out of the chute.', 'good');
   }
-  sodaPrompt() {
-    const P = this.property.soda;
-    if (P.eats) return 'Whack the drink machine where it sticks';
-    if (this.heldOf('sodaCase')) return 'Restock the drink machine';
-    if (P.coins > 3) return `Pull the coin box (${money(P.coins)})`;
-    return 'Drink machine';
+  /* ---------------- the vending machines ---------------- */
+  vendPrompt(id) {
+    const V = this.vending, M = MACHINES[id];
+    const pack = this.heldAll('vendPack').find((p) => PRODUCTS[p.product].machine === id);
+    if (pack) return `Open ${M.name} and load the ${PRODUCTS[pack.product].label}`;
+    const t = V.trouble(id);
+    const name = M.name.replace(/^the /, '');
+    return t ? `Open the ${name} (${t})` : V.readyForCoins(id) && V.machine(id).coins >= 5 ? `Open the ${name} (coin box ${money(V.machine(id).coins)})` : `Open the ${name}`;
   }
-  useSoda() {
-    const P = this.property.soda;
-    if (P.eats) { P.eats = false; this.g.sound.thump(0, 0.8); this.toast('Something inside it drops into place. It will behave for a while.', 'good'); const t = this.tasks.find((x) => x.kind === 'vend'); if (t) this.tasks.complete(t); return; }
-    const c = this.heldOf('sodaCase');
-    if (c) { this.removeHeld(c); this.property.refillSoda(); this.g.sound.vendDrop(0, 0.5); this.toast('Restocked.', 'good'); return; }
-    if (P.coins > 3) { const amt = this.property.collectCoins(); this.ledger.vendingBag = round2(this.ledger.vendingBag + amt); this.g.sound.coins(0, 1); this.toast(`${money(amt)} in quarters. It goes in the vending bag, not the drawer.`, 'note'); }
+  openVend(id) { this.standUp(); this.openPicker(new VendPanel(this, id)); this.g.sound.lockClick(false); }
+  openStock() { this.openPicker(new StockShelf(this).focusNeeded()); }
+  /* What the panels tell the rest of the night. */
+  onVendLoaded(id, prod) {
+    if (!this.vending.empties(id).length) this.log(`Filled ${MACHINES[id].name}.`, 'plain');
+    if (this.training) this.training.event('vendLoaded', { id, prod });
   }
-  takeSodaCase() {
-    if (!this.memory.inv('sodaCases')) return;
-    const it = makeItem('sodaCase');
-    if (this.giveItem(it)) this.memory.use('sodaCases');
-  }
+  onVendCoins(id, amt) { this.log(`Pulled ${money(amt)} from ${MACHINES[id].name}.`, 'plain'); if (this.training) this.training.event('vendCoins', { id, amt }); }
+  onVendJamCleared(id) { this.toast('It will behave for a while.', 'good'); if (this.training) this.training.event('vendJam', { id }); }
+  onVendTaken(prod) { if (this.training) this.training.event('vendTaken', { prod }); }
   gatePrompt(id) {
     const g = this.property.gate;
     if (!this.clock.past(22, 0)) return 'Pool gate';
@@ -1123,9 +1162,11 @@ export class Shift {
     this.barks.say(p, 'iceBroke', { force: true });
     if (!this.tasks.find((t) => t.kind === 'ice') && !p.flags.iceComplained) { p.flags.iceComplained = true; this.guestComesDown(p, { kind: 'ice' }); }
   }
-  vendAte(p) {
-    this.barks.say(p, 'vendAte', { force: true });
-    if (!p.flags.refunded) { p.flags.refunded = true; this.guestComesDown(p, { kind: 'refund' }); }
+  /** A guest you can see at a machine that is out, full, or kept the money. */
+  vendFailed(p, id, res) {
+    const key = res.why === 'ate' ? 'vendAte' : res.why === 'full' ? 'vendFull' : id === 'soap' ? 'soapOut' : 'vendOut';
+    this.barks.say(p, key, { force: true });
+    this.vending.trouble_(id, res.why, res.prod, p);
   }
   porchChair() {}
   greet(p) { this.barks.say(p, 'greet', { cool: 60 }); }
@@ -1213,6 +1254,7 @@ export class Shift {
     const g = this.g, draws = g.draws, M = g.world.dyn.items;
     this.cars.draw(draws, this.clock.dawn());
     this.property.draw(draws, M);
+    this.vending.draw(draws);
     this.breakfast.draw(draws);
     if (!this.mopOut && M.mop) draws.push({ mesh: M.mop, x: MOP_HOME.x, y: 0, z: MOP_HOME.z, yaw: 0.6, r: 0.8 });
     draws.push({ mesh: this.meshes.vacancySwitch, x: 4.37, y: 1.2, z: -6.93, yaw: 0, r: 0.5, shade: 1 });
@@ -1261,8 +1303,9 @@ export class Shift {
     if (this.objT <= 0) { this.objT = 0.3; const [o, pulse] = this.objective(); ui.setObjective(o, pulse); }
   }
 
-  objective() {
+  objective(skipTraining) {
     const s = this, c = this.clock;
+    if (!skipTraining && this.training) { const o = this.training.objective(); if (o) return o; }
     if (this.mode === 'paper' && !this.clockedIn) return ['', false];
     if (this.phone.anyRinging()) return ['The phone is ringing.', true];
     const front = this.desk.front();
@@ -1343,6 +1386,16 @@ export class Shift {
       lostGuests: st.lostGuests, longWaits: st.longWaits || 0, noVacancyMiss: st.noVacancyMiss > 0, turnedAwayWithRooms: st.turnedAwayWithRooms, walkedReservation: st.walkedReservation, droveBy: st.droveBy,
       notes: this.notesLog.filter((n) => n.kind !== 'plain').slice(-10),
     };
+    // the machines, and whether June was here
+    const V = this.vending.summary();
+    r.trained = !!this.training;
+    r.vendOut = Object.entries(V.machines).filter(([, m]) => m.empties.length).map(([id]) => MACHINES[id].name);
+    r.vendFull = Object.entries(V.machines).filter(([, m]) => m.full).map(([id]) => MACHINES[id].name);
+    r.vendJam = V.machines.soda.jam;
+    r.vendLost = V.lost.empty + V.lost.full + V.lost.ate;
+    r.vendSold = V.sold.soda + V.sold.snack + V.sold.soap;
+    r.vendRung = V.rungIn;
+    r.vendHeld = round2(this.heldAll('vendCoins').reduce((a, b) => a + b.amount, 0));
     return r;
   }
 
@@ -1370,7 +1423,8 @@ export class Shift {
     // the truck comes, some of what ran out gets replaced
     const inv = mem.d.inventory;
     for (const [k, v] of Object.entries({ coffee: 4, decaf: 2, muffins: 18, bagels: 12, cereal: 22, fruit: 12, oj: 3, milk: 2, waffleMix: 1 })) inv[k] = Math.max(inv[k] || 0, v);
-    for (const [k, v] of Object.entries({ towels: 30, pillows: 14, blankets: 8, toiletries: 20, tp: 24, bulbs: 6, batteries: 8, sodaCases: 2 })) inv[k] = Math.max(inv[k] || 0, v);
+    for (const [k, v] of Object.entries({ towels: 30, pillows: 14, blankets: 8, toiletries: 20, tp: 24, bulbs: 6, batteries: 8 })) inv[k] = Math.max(inv[k] || 0, v);
+    Vending.restockShelf(mem.d);
     mem.advanceDay();
     mem.save();
     g.sound.shiftEnd();

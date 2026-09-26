@@ -379,24 +379,26 @@ export const iceRun = () => ({
   },
 });
 
-/** A soda from the machine. Sometimes the machine keeps the money. */
-export const vendRun = () => ({
-  kind: 'vend', phase: 0,
-  start(p, s, n) { n.route(p, SPOTS.vendStand.x, SPOTS.vendStand.z, 0); },
+/** Something from a machine: a soda, a honey bun, a box of Tide. It may be out, full, or keep the money. */
+const STAND = { soda: SPOTS.vendStand, snack: SPOTS.snackStand, soap: SPOTS.soapStand };
+export const vendRun = (id = 'soda') => ({
+  kind: 'vend', phase: 0, machine: id,
+  start(p, s, n) { const sp = STAND[id]; n.route(p, sp.x, sp.z, 0); },
   update(p, dt, s, n) {
+    const sp = STAND[id];
     if (this.phase === 0) {
       if (p.path) { n.step(p, dt); return false; }
-      if (!n.approach(p, SPOTS.vendStand.x, SPOTS.vendStand.z, dt, 0)) return false;
+      if (!n.approach(p, sp.x, sp.z, dt, sp.yaw)) return false;
       this.phase = 1; this.w = 3.2; p.reach = true;
-      this.ate = s.property.vend(p);
+      this.res = s.vending.sale(id, p);
       s.g.sound.coins(s.panOf(p.x, p.z), s.near(p.x, p.z, 12));
       return false;
     }
     this.w -= dt;
     if (this.w > 0) return false;
     p.reach = false;
-    if (!this.ate) s.g.sound.vendDrop(s.panOf(p.x, p.z), s.near(p.x, p.z, 12));
-    else s.vendAte(p);
+    if (this.res.ok) s.g.sound.vendDrop(s.panOf(p.x, p.z), s.near(p.x, p.z, 12));
+    else s.vendFailed(p, id, this.res);
     return true;
   },
 });

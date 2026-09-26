@@ -17,7 +17,7 @@
    ============================================================ */
 import {
   DESK_PROPS, BOARD, LINEN, SUPPLY, MGR_DESK, PANTRY_SHELF, FRIDGE, STATIONS, BFAST_COUNTER, BTV, NEWS_RACK, BTRASH,
-  ICE_MACHINE, VENDING, NEWS_DROP, DUMPSTER, ROOMS, toWorld, MAINT, GATES, DESK,
+  ICE_MACHINE, VENDING, VEND_SHELF, NEWS_DROP, DUMPSTER, ROOMS, toWorld, MAINT, GATES, DESK,
 } from './world/layout.js';
 import { roomFurniture } from './world/roombuild.js';
 import { castInteract } from './player.js';
@@ -125,12 +125,10 @@ export class Interact {
       prompt: () => (s.property.ice.jammed ? 'Clear the jam (reach up into the chute)' : 'Ice machine (working)'),
       use: () => s.clearIce(),
     });
-    const soda = VENDING[0];
-    add({
-      id: 'soda', aabb: { ...box(soda), y1: soda.top, z0: soda.z0 - 0.05 }, hold: () => (s.property.soda.eats ? 1.0 : 0),
-      prompt: () => s.sodaPrompt(), use: () => s.useSoda(),
-    });
-    add({ id: 'snack', aabb: { ...box(VENDING[1]), y1: VENDING[1].top, z0: VENDING[1].z0 - 0.05 }, prompt: () => 'Snack machine. Somebody bought all the Funyuns.', use: () => {} });
+    // the drink and snack machines here, and the soap machine in the laundry: open the front, see what is out
+    for (const v of VENDING) {
+      add({ id: 'vend:' + v.id, aabb: { x0: v.x0 - 0.04, x1: v.x1 + 0.04, y0: 0, y1: v.top, z0: v.z0 - 0.04, z1: v.z1 + 0.04 }, prompt: () => s.vendPrompt(v.id), use: () => s.openVend(v.id) });
+    }
     add({ id: 'dumpster', aabb: { ...box(DUMPSTER), y1: 1.4 }, prompt: () => (s.heldOf('trash') ? 'Toss the bag in the dumpster' : null), use: () => s.tossTrash() });
     for (const g of GATES) {
       const cx = g.hx + g.w / 2;
@@ -141,7 +139,11 @@ export class Interact {
     /* ---------------- maintenance ---------------- */
     add({ id: 'breakers', aabb: { x0: MAINT.x1 - 0.25, x1: MAINT.x1 - 0.02, y0: 0.55, y1: 1.45, z0: 32.8, z1: 33.2 }, hold: () => (s.tasks.find((t) => t.kind === 'breaker') ? 1.0 : 0), prompt: () => (s.tasks.find((t) => t.kind === 'breaker') ? `Reset the breaker for ${s.tasks.find((t) => t.kind === 'breaker').room}` : 'Room breakers. Twenty-eight of them.'), use: () => s.resetBreaker() });
     add({ id: 'tools', aabb: { x0: 2.7, x1: 4.5, y0: 0.4, y1: 1.6, z0: MAINT.z1 - 0.3, z1: MAINT.z1 - 0.02 }, prompt: () => 'Tool wall', use: () => s.openPicker(this.toolPicker()) });
-    add({ id: 'sodacases', aabb: { x0: MAINT.x0 + 0.1, x1: MAINT.x0 + 0.7, y0: 0, y1: 1.9, z0: MAINT.z0 + 1.0, z1: MAINT.z0 + 3.4 }, prompt: () => (s.memory.inv('sodaCases') ? 'Take a case of soda' : 'Shelves (no soda left)'), use: () => s.takeSodaCase() });
+    add({
+      id: 'vendstock', aabb: { x0: VEND_SHELF.x0, x1: VEND_SHELF.x1 + 0.05, y0: 0, y1: VEND_SHELF.top, z0: VEND_SHELF.z0, z1: VEND_SHELF.z1 },
+      prompt: () => (s.heldOf('vendPack') ? 'Vending stock (put back, or take more)' : 'Vending stock: cases of soda, boxes of snacks and soap'),
+      use: () => s.openStock(),
+    });
 
     return T;
   }

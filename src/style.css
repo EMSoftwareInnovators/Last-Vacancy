@@ -307,6 +307,14 @@ body.cine .pad{max-height:76cqh}
 .sheet tr.sel td{background:#2a2418;color:#f2ecd6}
 .sheet .ok{color:#2a7a3a;font-weight:bold}
 .sheet .bad{color:#a3221a;font-weight:bold}
+.sheet .warn{color:#9a6a0a;font-weight:bold}
+.sheet .k{color:#6a2a14;font-weight:bold;margin-top:.5cqw}
+/* a vending machine with its front open, and the supply shelf */
+.sheet.vend{min-width:62cqw;font-size:2.1cqw}
+.sheet.vend table{font-size:2cqw}
+.sheet.vend .mono{font-family:"Courier New",monospace;white-space:pre;letter-spacing:-.05cqw}
+.sheet.vend tr.head td{border-bottom:0.25cqw solid #2a2418;padding-top:.6cqw}
+.sheet tr.sel .bad,.sheet tr.sel .ok,.sheet tr.sel .warn{color:inherit;text-decoration:underline}
 /* The owner's notes: yellow pad, felt tip, capitals when she means it. */
 .sheet.note{
   background:#f6e98a;border-color:#d8c860;font-family:"Comic Sans MS","Segoe Print","Bradley Hand","Marker Felt",cursive;

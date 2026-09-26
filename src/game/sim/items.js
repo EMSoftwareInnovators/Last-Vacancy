@@ -8,6 +8,8 @@
    bulky things take both arms and nothing else fits.
    ============================================================ */
 
+import { PRODUCTS } from './vending.js';
+
 export const ITEMS = {
   key: { label: (it) => `KEY ${it.room}`, mesh: 'key' },
   master: { label: () => 'MASTER KEY', mesh: 'key' },
@@ -31,7 +33,10 @@ export const ITEMS = {
   iron: { label: () => 'IRON', mesh: 'box' },
   lost: { label: (it) => it.what || 'SOMEBODY\'S THING', mesh: 'lostItem' },
   coinBag: { label: (it) => `COIN BAG $${it.amount.toFixed(2)}`, mesh: 'box' },
-  sodaCase: { label: () => 'CASE OF SODA', mesh: 'box', bulky: true },
+  // a case of soda or a box of snacks or soap, off the supply room shelf, for one column
+  vendPack: { label: (it) => `${it.pack === 'case' ? 'CASE' : 'BOX'}: ${VEND_SHORT[it.product] || it.product} (${it.qty})`, mesh: 'box' },
+  // a machine's coin box, pulled; it goes to the register
+  vendCoins: { label: (it) => `COIN BOX, ${it.title}: $${it.amount.toFixed(2)}`, mesh: 'box' },
   coffee: { label: () => 'COFFEE PACK', mesh: 'coffee' },
   decaf: { label: () => 'DECAF PACK', mesh: 'decaf' },
   waffleMix: { label: () => 'WAFFLE MIX', mesh: 'waffleMix' },
@@ -46,14 +51,18 @@ export const ITEMS = {
   mop: { label: () => 'MOP AND BUCKET', mesh: 'mop', bulky: true },
 };
 
+const VEND_SHORT = Object.fromEntries(Object.entries(PRODUCTS).map(([k, v]) => [k, v.short]));
+
 let seq = 1;
 /* Small things ride in a shirt pocket and do not take a hand. */
-export const POCKET = new Set(['key', 'master', 'card', 'slip', 'voucher', 'coupon', 'receipt', 'checks', 'coinBag', 'packet']);
+export const POCKET = new Set(['key', 'master', 'card', 'slip', 'voucher', 'coupon', 'receipt', 'checks', 'coinBag', 'packet', 'vendCoins']);
 
 export function makeItem(kind, extra = {}) {
   const def = ITEMS[kind];
   return { id: seq++, kind, mesh: def.mesh, bulky: !!def.bulky, pocket: POCKET.has(kind), ...extra };
 }
+/* A case of soda is both arms; a box of Funyuns is one hand. */
+export function makePack(pack) { return makeItem('vendPack', { ...pack, bulky: !!pack.bulky }); }
 export function itemLabel(it) {
   const def = ITEMS[it.kind];
   return def ? def.label(it) : it.kind.toUpperCase();
